@@ -1,20 +1,21 @@
-Panduan Implementasi Addon Panonesia Editor v1.1
-Langkah 1: Siapkan Struktur Folder & File
-Pertama, buka folder hasil export tur 3DVista Anda. Anda perlu membuat beberapa folder dan file baru agar strukturnya sesuai dengan sistem addon kita.
+# Panduan Implementasi Addon Panonesia Editor v1.1
 
-Buat folder baru bernama addon-kustom.
+Dokumen ini adalah panduan praktis untuk mengintegrasikan *framework addon* Panonesia Editor v1.1 ke dalam proyek tur virtual 3DVista Anda.
 
-Buat folder baru lagi bernama data-popups.
+---
 
-Di dalam folder addon-kustom, buat dua file kosong:
+## Langkah 1: Siapkan Struktur Folder & File
 
-addon-style.css
+Pertama, buka folder hasil *export* tur 3DVista Anda. Buat beberapa folder dan file baru agar strukturnya sesuai dengan sistem addon kita.
 
-addon-loader.js
+1.  Buat folder baru bernama `addon-kustom`.
+2.  Buat folder baru lagi bernama `data-popups`.
+3.  Di dalam folder `addon-kustom`, buat dua file kosong:
+    * `addon-style.css`
+    * `addon-loader.js`
+4.  Di dalam folder `data-popups`, buat satu atau beberapa file konten, misalnya `konten.js`.
 
-Di dalam folder data-popups, buat satu file contoh bernama konten.js untuk memulai.
-
-Struktur akhir Anda akan terlihat seperti ini:
+Struktur akhir folder Anda akan terlihat seperti ini:
 
 - FOLDER-TUR-ANDA/
   |- index.htm
@@ -30,17 +31,17 @@ Struktur akhir Anda akan terlihat seperti ini:
   |
   |- media/
      |- ... (semua aset gambar tur) ...
-Langkah 2: Isi File Inti Addon (Engine)
-Salin dan tempel kode di bawah ini ke dalam file yang sudah Anda buat di folder addon-kustom.
+---
 
-<br>
-<details>
-<summary><strong>Klik di sini untuk melihat & menyalin kode untuk <code>addon-style.css</code></strong></summary>
+## Langkah 2: Isi File Inti Addon (`Engine`)
 
-CSS
+Salin dan tempel kode di bawah ini ke dalam file yang sesuai di folder `addon-kustom`.
 
+### ### File: `addon-kustom/addon-style.css`
+
+```css
 /* addon-kustom/addon-style.css (Final v1.1) */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat&family=Roboto&display=swap');
+@import url('[https://fonts.googleapis.com/css2?family=Montserrat&family=Roboto&display=swap](https://fonts.googleapis.com/css2?family=Montserrat&family=Roboto&display=swap)');
 
 :root {
     --popup-bg: #ffffff; --popup-text: #333333; --popup-title: #000000;
@@ -114,213 +115,5 @@ body.tema-gelap .popup-content {
 .action-buttons-container { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
 .action-btn { background-color: var(--popup-btn-bg); color: var(--popup-btn-text); border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-align: center; width: 100%; transition: filter 0.2s ease; }
 .action-btn:hover { filter: brightness(1.1); }
-</details>
+---
 
-<br>
-<details>
-<summary><strong>Klik di sini untuk melihat & menyalin kode untuk <code>addon-loader.js</code></strong></summary>
-
-JavaScript
-
-// addon-kustom/addon-loader.js (Final v1.1)
-
-// Objek global untuk menampung semua data pop-up dari file modular
-window.semuaKontenPopup = {};
-let currentSlideIndex = 0;
-let totalSlides = 0;
-
-function inisialisasiAddon() {
-    if (window.addonSudahAktif) return;
-    const head = document.head || document.getElementsByTagName('head')[0];
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.type = 'text/css';
-    link.href = 'addon-kustom/addon-style.css';
-    head.appendChild(link);
-    window.addonSudahAktif = true;
-    console.log('✅ Panonesia Editor v1.1 Addon berhasil diaktifkan!');
-}
-
-function tampilkanPopup(idKonten) {
-    const data = window.semuaKontenPopup[idKonten];
-    if (!data) { console.error(`Konten untuk ID '${idKonten}' tidak ditemukan!`); return; }
-    
-    const popupLama = document.getElementById('popup-kustom-wrapper');
-    if (popupLama) popupLama.remove();
-
-    let htmlPopup = '';
-    const tipe = data.tipe || 'info'; // Default ke 'info' jika tipe tidak ada
-    switch (tipe) {
-        case 'galeri': htmlPopup = buatPopupGaleri(data); break;
-        default: htmlPopup = buatPopupInfo(data); break; // Semua variasi info
-    }
-    
-    document.body.insertAdjacentHTML('beforeend', htmlPopup);
-    const wrapper = document.getElementById('popup-kustom-wrapper');
-    setTimeout(() => { wrapper.classList.add('visible'); }, 10);
-    if (window.tour) window.tour.pause();
-}
-
-function tutupPopup(event) {
-    const popup = document.getElementById('popup-kustom-wrapper');
-    if (popup) {
-        popup.classList.remove('visible');
-        setTimeout(() => { popup.remove(); }, 300);
-    }
-    if (window.tour) window.tour.resume();
-}
-
-function buatTombolAksi(actions) {
-    if (!actions || actions.length === 0) return '';
-    let buttonsHTML = '<div class="action-buttons-container">';
-    actions.forEach(action => {
-        buttonsHTML += `<button class="action-btn" onclick="${action.perintah}">${action.label}</button>`;
-    });
-    buttonsHTML += '</div>';
-    return buttonsHTML;
-}
-
-function buatPopupInfo(data) {
-    const posisiClass = data.posisi || 'tengah';
-    const style = data.style || {};
-    const inlineStyle = `
-        --popup-bg: ${style.warnaLatar || ''}; --popup-text: ${style.warnaTeks || ''};
-        --popup-title: ${style.warnaTeks || ''}; font-family: ${style.font || ''};
-    `;
-    return `
-        <div class="popup-overlay posisi-${posisiClass}" id="popup-kustom-wrapper" onclick="tutupPopup(event)">
-            <div class="popup-content info-window" style="${inlineStyle}" onclick="event.stopPropagation()">
-                <button class="close-x-btn" onclick="tutupPopup(event)">&times;</button>
-                ${data.gambar ? `<img src="${data.gambar}" alt="${data.judul || ''}" class="info-image">` : ''}
-                <div class="konten-teks">
-                    ${data.judul ? `<h2>${data.judul}</h2>` : ''}
-                    ${data.deskripsi ? `<div class="deskripsi">${data.deskripsi}</div>` : ''}
-                </div>
-                ${buatTombolAksi(data.actions)}
-            </div>
-        </div>
-    `;
-}
-
-function buatPopupGaleri(data) {
-    const posisiClass = data.posisi || 'tengah';
-    totalSlides = data.images.length; currentSlideIndex = 0;
-    let imagesHTML = data.images.map(src => `<img src="${src}">`).join('');
-    return `
-        <div class="popup-overlay posisi-${posisiClass}" id="popup-kustom-wrapper" onclick="tutupPopup(event)">
-            <div class="popup-content galeri-window" onclick="event.stopPropagation()">
-                <button class="close-x-btn" onclick="tutupPopup(event)">&times;</button>
-                ${data.judul ? `<h2>${data.judul}</h2>` : ''}
-                <div class="gallery-container">
-                    <div class="gallery-images" id="gallery-slider">${imagesHTML}</div>
-                    ${totalSlides > 1 ? `<button class="gallery-nav prev" onclick="ubahSlide(-1)">&#10094;</button><button class="gallery-nav next" onclick="ubahSlide(1)">&#10095;</button>` : ''}
-                </div>
-                ${data.deskripsi ? `<div class="deskripsi">${data.deskripsi}</div>` : ''}
-                ${buatTombolAksi(data.actions)}
-            </div>
-        </div>
-    `;
-}
-
-function ubahSlide(direction) {
-    currentSlideIndex = (currentSlideIndex + direction + totalSlides) % totalSlides;
-    document.getElementById('gallery-slider').style.transform = `translateX(-${currentSlideIndex * 100}%)`;
-}
-</details>
-
-Langkah 3: Isi File Konten (data-popups/konten.js)
-Ini adalah "pusat kendali" Anda. Di sinilah Anda mendefinisikan semua pop-up yang ingin Anda gunakan.
-
-<details>
-<summary><strong>Klik di sini untuk melihat & menyalin kode untuk <code>data-popups/konten.js</code></strong></summary>
-
-JavaScript
-
-// data-popups/konten.js
-// Ganti nama file ini sesuai kebutuhan (misal: lobby.js, pameran.js, dll.)
-
-Object.assign(window.semuaKontenPopup, {
-
-    // CONTOH 1: Pop-up judul saja, di posisi atas
-    "infoJudul": {
-        tipe: "info",
-        posisi: "atas",
-        judul: "Selamat Datang di Tur Virtual Kami"
-    },
-
-    // CONTOH 2: Pop-up deskripsi saja, di posisi bawah
-    "infoNavigasi": {
-        tipe: "info",
-        posisi: "bawah",
-        deskripsi: "<p>Gunakan hotspot navigasi untuk menjelajahi setiap ruangan. Klik pada objek untuk mendapatkan informasi detail.</p>"
-    },
-
-    // CONTOH 3: Pop-up info lengkap dengan gambar dan tombol aksi
-    "infoObjekPenting": {
-        tipe: "info",
-        posisi: "kanan",
-        judul: "Arca Ganesha",
-        gambar: "media/gambar1.jpg", // Ganti dengan path gambar Anda
-        deskripsi: "Arca ini berasal dari abad ke-8 dan merupakan salah satu koleksi tertua kami.",
-        actions: [
-            {
-                label: "Pindah ke Ruang Arca",
-                perintah: "window.tour.setMainMediaByName('Ruang Arca'); tutupPopup(event);" // Ganti 'Ruang Arca' dengan nama panorama tujuan Anda
-            }
-        ]
-    },
-
-    // CONTOH 4: Pop-up galeri dengan kustomisasi style
-    "galeriRuangan": {
-        tipe: "galeri",
-        posisi: "tengah",
-        judul: "Galeri Ruang Utama",
-        images: ["media/gambar1.jpg", "media/gambar2.jpg"], // Ganti dengan path gambar Anda
-        style: {
-            warnaLatar: "#1a2530",
-            warnaTeks: "#e0e0e0",
-            font: "'Montserrat', sans-serif"
-        }
-    }
-});
-</details>
-
-Langkah 4: Hubungkan Semuanya di index.htm
-Buka file index.htm Anda dan tambahkan baris-baris berikut tepat sebelum tag penutup </body>.
-
-HTML
-
-    <script src="addon-kustom/addon-loader.js"></script>
-
-    <script src="data-popups/konten.js"></script>
-    </body>
-</html>
-Langkah 5: Atur Aksi di Dalam 3DVista
-Ini adalah langkah terakhir di dalam aplikasi 3DVista.
-
-Aktivasi Addon (Satu Kali per Proyek):
-
-Buka Skin Editor.
-
-Pilih level Player (paling atas).
-
-Klik tab Actions.
-
-Pada event onTourStart, tambahkan aksi Run Javascript dan isi dengan:
-
-JavaScript
-
-inisialisasiAddon();
-Panggil Pop-up dari Hotspot:
-
-Pilih hotspot atau tombol yang Anda inginkan.
-
-Pada aksi On Click, tambahkan aksi Run Javascript dan isi dengan ID pop-up yang ingin Anda panggil dari file data-popups/konten.js.
-
-Contoh:
-
-Untuk memanggil pop-up info objek: tampilkanPopup('infoObjekPenting');
-
-Untuk memanggil galeri: tampilkanPopup('galeriRuangan');
-
-Setelah semua langkah ini selesai, export tur Anda. Addon pop-up kustom Anda kini sudah terintegrasi dan siap digunakan.
