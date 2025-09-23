@@ -115,5 +115,191 @@ body.tema-gelap .popup-content {
 .action-buttons-container { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
 .action-btn { background-color: var(--popup-btn-bg); color: var(--popup-btn-text); border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; text-align: center; width: 100%; transition: filter 0.2s ease; }
 .action-btn:hover { filter: brightness(1.1); }
----
+```
+
+### File: addon-kustom/addon-loader.js
+```
+// addon-kustom/addon-loader.js (Final v1.1)
+
+// Objek global untuk menampung semua data pop-up dari file modular
+window.semuaKontenPopup = {};
+let currentSlideIndex = 0;
+let totalSlides = 0;
+
+function inisialisasiAddon() {
+    if (window.addonSudahAktif) return;
+    const head = document.head || document.getElementsByTagName('head')[0];
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = 'addon-kustom/addon-style.css';
+    head.appendChild(link);
+    window.addonSudahAktif = true;
+    console.log('✅ Panonesia Editor v1.1 Addon berhasil diaktifkan!');
+}
+
+function tampilkanPopup(idKonten) {
+    const data = window.semuaKontenPopup[idKonten];
+    if (!data) { console.error(`Konten untuk ID '${idKonten}' tidak ditemukan!`); return; }
+    
+    const popupLama = document.getElementById('popup-kustom-wrapper');
+    if (popupLama) popupLama.remove();
+
+    let htmlPopup = '';
+    const tipe = data.tipe || 'info'; // Default ke 'info' jika tipe tidak ada
+    switch (tipe) {
+        case 'galeri': htmlPopup = buatPopupGaleri(data); break;
+        default: htmlPopup = buatPopupInfo(data); break; // Semua variasi info
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', htmlPopup);
+    const wrapper = document.getElementById('popup-kustom-wrapper');
+    setTimeout(() => { wrapper.classList.add('visible'); }, 10);
+    if (window.tour) window.tour.pause();
+}
+
+function tutupPopup(event) {
+    const popup = document.getElementById('popup-kustom-wrapper');
+    if (popup) {
+        popup.classList.remove('visible');
+        setTimeout(() => { popup.remove(); }, 300);
+    }
+    if (window.tour) window.tour.resume();
+}
+
+function buatTombolAksi(actions) {
+    if (!actions || actions.length === 0) return '';
+    let buttonsHTML = '<div class="action-buttons-container">';
+    actions.forEach(action => {
+        buttonsHTML += `<button class="action-btn" onclick="${action.perintah}">${action.label}</button>`;
+    });
+    buttonsHTML += '</div>';
+    return buttonsHTML;
+}
+
+function buatPopupInfo(data) {
+    const posisiClass = data.posisi || 'tengah';
+    const style = data.style || {};
+    const inlineStyle = `
+        --popup-bg: ${style.warnaLatar || ''}; --popup-text: ${style.warnaTeks || ''};
+        --popup-title: ${style.warnaTeks || ''}; font-family: ${style.font || ''};
+    `;
+    return `
+        <div class="popup-overlay posisi-${posisiClass}" id="popup-kustom-wrapper" onclick="tutupPopup(event)">
+            <div class="popup-content info-window" style="${inlineStyle}" onclick="event.stopPropagation()">
+                <button class="close-x-btn" onclick="tutupPopup(event)">&times;</button>
+                ${data.gambar ? `<img src="${data.gambar}" alt="${data.judul || ''}" class="info-image">` : ''}
+                <div class="konten-teks">
+                    ${data.judul ? `<h2>${data.judul}</h2>` : ''}
+                    ${data.deskripsi ? `<div class="deskripsi">${data.deskripsi}</div>` : ''}
+                </div>
+                ${buatTombolAksi(data.actions)}
+            </div>
+        </div>
+    `;
+}
+
+function buatPopupGaleri(data) {
+    const posisiClass = data.posisi || 'tengah';
+    totalSlides = data.images.length; currentSlideIndex = 0;
+    let imagesHTML = data.images.map(src => `<img src="${src}">`).join('');
+    return `
+        <div class="popup-overlay posisi-${posisiClass}" id="popup-kustom-wrapper" onclick="tutupPopup(event)">
+            <div class="popup-content galeri-window" onclick="event.stopPropagation()">
+                <button class="close-x-btn" onclick="tutupPopup(event)">&times;</button>
+                ${data.judul ? `<h2>${data.judul}</h2>` : ''}
+                <div class="gallery-container">
+                    <div class="gallery-images" id="gallery-slider">${imagesHTML}</div>
+                    ${totalSlides > 1 ? `<button class="gallery-nav prev" onclick="ubahSlide(-1)">&#10094;</button><button class="gallery-nav next" onclick="ubahSlide(1)">&#10095;</button>` : ''}
+                </div>
+                ${data.deskripsi ? `<div class="deskripsi">${data.deskripsi}</div>` : ''}
+                ${buatTombolAksi(data.actions)}
+            </div>
+        </div>
+    `;
+}
+
+function ubahSlide(direction) {
+    currentSlideIndex = (currentSlideIndex + direction + totalSlides) % totalSlides;
+    document.getElementById('gallery-slider').style.transform = `translateX(-${currentSlideIndex * 100}%)`;
+}
+```
+
+Langkah 3: Isi File Konten
+Ini adalah "pusat kendali" Anda. Buat file .js di dalam folder data-popups/ dan isi dengan definisi pop-up Anda.
+
+### File: data-popups/konten.js (Contoh)
+
+```
+// data-popups/konten.js
+// Ganti nama file ini sesuai kebutuhan (misal: lobby.js, pameran.js, dll.)
+
+Object.assign(window.semuaKontenPopup, {
+
+    // CONTOH 1: Pop-up judul saja, di posisi atas
+    "infoJudul": {
+        tipe: "info",
+        posisi: "atas",
+        judul: "Selamat Datang di Tur Virtual Kami"
+    },
+
+    // CONTOH 2: Pop-up deskripsi saja, di posisi bawah
+    "infoNavigasi": {
+        tipe: "info",
+        posisi: "bawah",
+        deskripsi: "<p>Gunakan hotspot navigasi untuk menjelajahi setiap ruangan. Klik pada objek untuk mendapatkan informasi detail.</p>"
+    },
+
+    // CONTOH 3: Pop-up info lengkap dengan gambar dan tombol aksi
+    "infoObjekPenting": {
+        tipe: "info",
+        posisi: "kanan",
+        judul: "Arca Ganesha",
+        gambar: "media/gambar1.jpg", // Ganti dengan path gambar Anda
+        deskripsi: "Arca ini berasal dari abad ke-8 dan merupakan salah satu koleksi tertua kami.",
+        actions: [
+            {
+                label: "Pindah ke Ruang Arca",
+                perintah: "window.tour.setMainMediaByName('Ruang Arca'); tutupPopup(event);" // Ganti 'Ruang Arca' dengan nama panorama tujuan Anda
+            }
+        ]
+    },
+
+    // CONTOH 4: Pop-up galeri dengan kustomisasi style
+    "galeriRuangan": {
+        tipe: "galeri",
+        posisi: "tengah",
+        judul: "Galeri Ruang Utama",
+        images: ["media/gambar1.jpg", "media/gambar2.jpg"], // Ganti dengan path gambar Anda
+        style: {
+            warnaLatar: "#1a2530",
+            warnaTeks: "#e0e0e0",
+            font: "'Montserrat', sans-serif"
+        }
+    }
+});
+```
+
+Langkah 4 & 5: Hubungkan ke 3DVista
+### Tautkan Skrip di index.htm
+Tambahkan baris-baris berikut di file index.htm Anda, tepat sebelum tag </body> penutup.
+```
+<script src="addon-kustom/addon-loader.js"></script>
+
+    <script src="data-popups/konten.js"></script>
+    ```
+
+### ### Atur Aksi di Dalam 3DVista
+
+1.  **Aksi `onTourStart`** (Di level `Player` -> `Actions`):
+    ```javascript
+    inisialisasiAddon();
+    ```
+2.  **Aksi `On Click`** (Di `Hotspot` mana pun):
+    ```javascript
+    tampilkanPopup('infoObjekPenting');
+    ```
+
+Selesai. Dengan format ini, Anda hanya perlu menyalin dan menempelkan kode ke file yang benar.
+```
 
