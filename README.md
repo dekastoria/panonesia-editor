@@ -2,9 +2,6 @@
 
 **Sebuah aplikasi web *standalone* untuk membuat dan mengelola komponen UI (pop-up) kustom yang modern dan responsif untuk tur virtual 3DVista.**
 
-![Contoh Tampilan Dashboard](https://i.ibb.co/L5Yw5W5/panonesia-editor-mockup.png)
-*(Gambar di atas adalah mockup konseptual)*
-
 ---
 
 ## Latar Belakang & Masalah yang Diselesaikan
