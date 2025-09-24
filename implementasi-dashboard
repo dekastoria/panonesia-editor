@@ -1,0 +1,235 @@
+# Implementasi Dashboard — Fokus Popup (Ringkas & Tegas, Versi Terbarui)
+
+> **Ruang lingkup versi ini:** *popup-only*. Tidak ada engine panorama/360 di preview runtime. **Scenes/Panoramas** tetap sebagai unit organisasi (tiap scene berisi kumpulan popup), namun preview bekerja seperti **CodePen-style HTML/CSS/JS** di dalam `<iframe sandbox>`.
+
+---
+
+## 1) Model Konsep (Hirarki Data)
+- **Project**
+  - **Scenes (Panoramas)**: `p1`, `p2`, …
+    - **Popups** (isi bebas per scene): `image | text | pdf | youtube | custom`
+
+> Satu proyek bisa punya banyak panorama; tiap panorama punya banyak popup (campur tipe).
+
+---
+
+## 2) Alur Navigasi UI
+1. **Dashboard → Projects**: daftar proyek (badge jumlah **scenes** & total **popups**).
+2. **Project Detail**:
+   - Sidebar **Scenes** (thumbnail + counter popup) + tombol **+ Add Scene** (upload pano 2:1 atau banner statis, nama).
+3. **Scene Editor** (per panorama):
+   - **Kiri (Builder)**: daftar popup (search, filter by type/tag/status), aksi: duplicate, move to scene, hide/delete.
+   - **Kanan Atas (Preview)**: `<iframe sandbox>` **live preview** dengan **Device switcher** (Mobile 375 / Tablet 768 / Desktop).
+   - **Kanan Bawah (Tabs)**:
+     - **Properties** (form otomatis dari schema)
+     - **Assets** (picker/drag path aset dari folder proyek)
+     - **Console** (log/error dari preview)
+     - **Code** (muncul hanya jika popup `custom`)
+   - **+ Add Popup** → buka **Template Gallery** (pilih **Style/Position/Theme**) → **klik template** → preview terpasang → tampil **Form Properties**.
+
+---
+
+## 3) Tipe Popup & Mode
+- **Template modes**: `image | text | pdf | youtube` → tampil form sederhana (**Title**, **Body** short/paragraph, **Media**: *Upload baru* atau *Ambil dari Folder Proyek*, **Action** opsional).
+- **Custom mode**: tab **Code** (Monaco) untuk **HTML/CSS/JS** langsung.
+- Setiap popup menyimpan `mode: "template" | "custom"`. Bisa pindah mode (opsional migrasi field).
+
+**Action (opsional)**
+- **Switch Panorama** (pilih target scene).
+- **Open URL / PDF / YouTube**.
+- **Trigger Popup lain**.
+- **None**.
+- Field tambahan: **Button label** (+ ikon opsional).
+
+**Close behavior (wajib)**
+- Tombol **X** selalu ada.
+- Pilihan tambahan: **klik luar** untuk menutup, **Esc** untuk menutup.
+
+**Aksesibilitas**
+- Alt text untuk gambar, **focus trap**, bisa ditutup via **Esc**.
+
+---
+
+## 4) Manajemen Banyak Popup (40–100+)
+- **Groups/Tags** (opsional) untuk pengelompokan cepat.
+- **Search + filter chips**: type, position, theme, status (draft/hidden), errors.
+- **Multi-select**: bulk hide/delete, **Move to Scene**, **Apply preset**.
+- **Diagnostics** per scene: asset 404, ID ganda, teks kosong → klik error fokus ke item.
+- Aksi cepat di Builder: **Duplicate**, **Hide/Show**, **Delete**.
+
+---
+
+## 5) Template & Schema (Auto-Form)
+Struktur paket:
+```
+templates/<templateKey>/
+  meta.json
+  schema.json      # definisi form & validasi (membangun Properties otomatis)
+  template.html
+  template.css
+  template.js      # hook opsional (init/destroy)
+  assets/...
+```
+Field inti (umum):
+- `position` (Top/Bottom/Left/Right/Center), `theme` (Light/Dark)
+- `title` (text), `body` (short/paragraph/HTML)
+- `img` (asset), `pdf` (asset), `youtubeId` (text)
+
+---
+
+## 6) Preview (CodePen-style)
+- **Iframe sandbox**: `sandbox="allow-scripts allow-modals"` (tanpa `allow-same-origin`).
+- **Komunikasi**: `window.postMessage` dua arah.
+  - **Editor → Preview**:  
+    `init {schemaVersion, templateKey, config}` • `update {path,value}` • `bulk {patches:[...]}` • `inspect {nodeId}` • `refresh {reason}`
+  - **Preview → Editor**:  
+    `ready {runtime}` • `select {nodeId}` • `log {level,args}` • `diagnostics {items,ts}`
+- **Patch update** per `id` (hindari render penuh).  
+- **Device switcher**: ubah **lebar iframe** (375/768/fluid) + **zoom**.  
+- **Sanitasi** konten user: **DOMPurify**.
+
+---
+
+## 7) Aset & Folder Proyek
+Saat **Create Project**, backend membuat:
+```
+/storage/projects/{slug}/assets/
+  ├─ gambar/
+  └─ dokumen/
+```
+- Tombol **Upload Assets** (drag–drop) → file mendapatkan URL publik `/storage/projects/{slug}/assets/...`.
+- **Picker** pada Properties/Code memudahkan menyisipkan path otomatis.
+
+---
+
+## 8) Trigger JS per Popup (untuk 3DVista “Execute JavaScript”)
+- **ID unik**: `<scene>--<type>--<slug>` (kebab-case), contoh: `p1--image--text03`.
+- **Snippet SHOW (1 baris)** dan **HIDE** dibuat otomatis (tombol **Copy JS Trigger** per item).
+- **Runtime listener** ada sekali di `script.js` export untuk menangani `show/hide` berdasarkan ID.
+
+> Tujuan: user cukup **copy-paste** snippet ke 3DVista hotspot; popup terkait akan tampil/tertutup di runtime kita.
+
+---
+
+## 9) Format Config (Ringkas)
+```json
+{
+  "project": { "title": "Hotel A" },
+  "scenes": [{
+    "id": "p1",
+    "name": "Lobby",
+    "src": "/storage/projects/hotel-a/assets/gambar/lobby.jpg",
+    "popups": [
+      { "id":"p1--image--text03", "type":"template", "templateKey":"popup-image",
+        "props":{"title":"Poster","img":"/storage/.../poster.webp","position":"Top","theme":"Light"} },
+      { "id":"p1--custom--card01", "type":"custom",
+        "custom":{"html":"<div class='card'>...</div>", "css":".card{...}", "js":"initCard()"} }
+    ]
+  }]
+}
+```
+
+---
+
+## 10) Export ZIP (Paritas = Preview)
+Struktur:
+```
+Proyek-Tur-Virtual/
+├─ index.html
+└─ aset-custom/
+   ├─ css/style.css
+   ├─ js/data.js       # window.PANONESIA_CONFIG = {...}
+   ├─ js/script.js     # runtime + listener trigger
+   ├─ gambar/...
+   └─ dokumen/...
+```
+- **Path relatif** (bisa offline).  
+- **CSP** di `<head>` `index.html`:
+  `default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src https://www.youtube.com https://player.vimeo.com;`
+
+---
+
+### TL;DR
+**Buat Project → tambah Scenes → di tiap Scene tambah Popups (template/custom) lewat Builder → preview sandbox real-time → simpan ke DB → export ZIP rapi; tiap popup punya ID & snippet JS “show/hide” untuk 3DVista.**
+
+---
+
+## 11) **Popup: Menu** (global/per‑scene)
+
+> **Tujuan:** menyediakan **navigasi cepat** (sidebar kiri/kanan ATAU dock ikon bawah) yang dapat memanggil semua aksi popup maupun aksi navigasi lain. **Tidak** menambah arsitektur baru—tetap dianggap **satu tipe popup**.
+
+### 11.1 Skema (schema.json)
+```json
+{
+  "type": "menu",
+  "title": "Menu",
+  "fields": [
+    { "key": "position", "type": "select",
+      "options": [
+        {"label":"Left","value":"left"},
+        {"label":"Right","value":"right"},
+        {"label":"Bottom Dock","value":"bottom"}
+      ],
+      "default": "left"
+    },
+    { "key": "theme", "type": "select",
+      "options": [{"label":"Light","value":"light"},{"label":"Dark","value":"dark"}],
+      "default": "light"
+    },
+    { "key": "items", "type": "array", "label": "Menu Items",
+      "itemSchema": {
+        "fields": [
+          { "key": "label", "type": "text", "required": true },
+          { "key": "icon",  "type": "asset", "accept": [".svg",".png",".jpg",".webp"], "required": false },
+          { "key": "action", "type": "select", "required": true,
+            "options": [
+              {"label":"Show Popup","value":"show"},
+              {"label":"Hide Popup","value":"hide"},
+              {"label":"Switch Scene","value":"switch-scene"},
+              {"label":"Open URL","value":"url"},
+              {"label":"Trigger Custom","value":"trigger"}
+            ]
+          },
+          { "key": "target", "type": "text", "help": "popupId / sceneId / URL / custom payload" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### 11.2 Render (preview/export)
+- **Menu** di‑render sebagai **komponen overlay** dengan `z-index` di atas canvas.
+- Posisi: `left`, `right` (sidebar) atau `bottom` (dock ikon).
+- Klik item: kirim **aksi standar** melalui protokol (lihat di bawah).
+
+### 11.3 Protokol Aksi (re‑use trigger yang sama)
+Semua item menu mengirim salah satu pesan berikut ke runtime:
+
+```js
+// Show popup
+postMessage({ proto:"panonesia/1", type:"trigger", action:"show", id:"<popupId>" }, "*");
+
+// Hide popup
+postMessage({ proto:"panonesia/1", type:"trigger", action:"hide", id:"<popupId>" }, "*");
+
+// Switch scene
+postMessage({ proto:"panonesia/1", type:"trigger", action:"switch-scene", id:"<sceneId>" }, "*");
+
+// Open URL
+postMessage({ proto:"panonesia/1", type:"trigger", action:"url", href:"https://..." }, "*");
+
+// Custom trigger (opsional)
+postMessage({ proto:"panonesia/1", type:"trigger", action:"custom", payload:{...} }, "*");
+```
+
+**Runtime listener** (di `script.js`) cukup menambahkan handler untuk aksi tambahan di atas (jika belum ada).
+
+### 11.4 Integrasi dengan Snippet JS Eksternal
+- Dashboard tetap menyediakan tombol **Copy JS Trigger** untuk **menu** maupun **popup**.
+- Snippet eksternal (mis. di 3DVista) memakai format yang sama sehingga **menu dapat dikontrol secara hybrid** (klik UI **atau** JavaScript eksternal).
+
+### 11.5 Aksesibilitas
+- **Focusable** via keyboard; gunakan **rol="menu"** dan **rol="menuitem"** bila sesuai.
+- **Esc** menutup menu (untuk `position:"bottom"` gunakan rolet `toolbar` + tombol memiliki `aria-label`).
+
