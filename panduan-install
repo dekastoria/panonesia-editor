@@ -1,0 +1,166 @@
+# Panduan Implementasi Panonesia Editor (Popup-Only) — untuk Non‑Coder
+
+> **Keselarasan:** Panduan ini **selaras** dengan `implementasi-dashboard.md (versi terbarui)` dan **tidak** memakai preview 360. Preview bekerja **HTML/CSS/JS (CodePen-style)** di `<iframe sandbox>`. Konsep **Scenes/Panoramas** tetap dipakai sebagai pengelompok konten (setiap scene berisi kumpulan popup).
+
+## 0) Gambaran Singkat
+- **Laravel + Filament** → login, CRUD Projects/Scenes/Popups, upload aset (gambar/PDF), tombol **Export ZIP**.
+- **Preview** → **iframe sandbox** (isolasi CSS/JS), live update via `postMessage` (tanpa engine 360).
+- **Export** → `index.html + aset-custom/...` (paritas dengan preview).
+
+> Hampir semua langkah berupa **install software + jalankan perintah** — cocok untuk non-coder.
+
+---
+
+## 1) Persiapan Software (sekali saja)
+1. **XAMPP (PHP + MySQL)**  
+   - Install & jalankan **Apache** + **MySQL** → buka `http://localhost/` untuk cek.
+2. **Git** — memudahkan clone & perintah terminal.
+3. **Node.js LTS** — untuk build aset front-end (`npm -v` untuk cek).
+4. **Composer** — manajer paket PHP (`composer -V` untuk cek).
+5. **VS Code** + Extensions (opsional): PHP Intelephense, Blade Syntax, ESLint, Prettier.
+
+> Kenapa XAMPP? Mempermudah punya **PHP + MySQL** dengan sekali install.
+
+---
+
+## 2) Buat Proyek Laravel + Filament
+> Lokasi contoh: `C:\xampp\htdocs\panonesia` (boleh lokasi lain).
+
+### 2.1 Inisialisasi Laravel
+```bash
+composer create-project laravel/laravel panonesia
+cd panonesia
+php artisan key:generate
+```
+
+### 2.2 Buat Database
+- Buka `http://localhost/phpmyadmin` → buat DB: `panonesia_db`  
+- Edit `.env`:
+  ```env
+  DB_DATABASE=panonesia_db
+  DB_USERNAME=root
+  DB_PASSWORD=
+  ```
+
+### 2.3 Jalankan Server
+```bash
+php artisan serve
+```
+Akses: `http://127.0.0.1:8000`
+
+### 2.4 Pasang Filament (Admin)
+```bash
+composer require filament/filament:"^3.2"
+php artisan filament:install
+php artisan migrate
+php artisan make:filament-user
+```
+Akses Admin: `http://127.0.0.1:8000/admin` (login pakai akun yang dibuat).
+
+### 2.5 Pasang Media Library (Upload Aset)
+```bash
+composer require spatie/laravel-medialibrary:^11.0
+php artisan vendor:publish --provider="Spatie\MediaLibrary\MediaLibraryServiceProvider" --tag="migrations"
+php artisan migrate
+php artisan storage:link
+```
+
+### 2.6 (Opsional) ZIP Export Helper
+> Untuk membuat file `.zip` hasil export lebih mudah.
+- Opsi 1 (murni PHP): **maennchen/zipstream-php**
+  ```bash
+  composer require maennchen/zipstream-php:^3.0
+  ```
+- Opsi 2 (laravel wrapper): **stechstudio/laravel-zipstream**
+  ```bash
+  composer require stechstudio/laravel-zipstream:^3.0
+  ```
+
+---
+
+## 3) Struktur Data (tanpa coding rumit)
+- **projects**: `name`, `slug`, `config_json` (menyimpan seluruh state editor), timestamps.  
+- **scenes**: `project_id`, `key`, `name`, `thumb`, `order`.  
+- **popups**: `scene_id`, `id_key`, `type`, `mode`, `props/json`, `order`, `status`.  
+- **media** (oleh Spatie) untuk file gambar/PDF.
+
+> Di Filament, buat **Resources** untuk Projects, Scenes, Popups (CRUD). Tambahkan **Upload Assets** (ke `/storage/projects/{slug}/assets/...`).
+
+---
+
+## 4) Editor & Preview (tanpa kode panjang)
+- Halaman **Editor** menampilkan: Builder (kiri) + Preview (kanan atas) + Tabs (kanan bawah).  
+- **Preview** adalah `<iframe sandbox="allow-scripts allow-modals">` (isolasi CSS/JS).  
+- **Komunikasi** memakai `window.postMessage` sesuai kontrak di `implementasi-dashboard.md`.  
+- **Device switcher** hanya mengubah **lebar iframe** dan **zoom**.  
+- **Sanitasi** HTML user dengan **DOMPurify**.
+
+> Tidak ada engine 360. Konsep **scene** tetap ada untuk mengelompokkan kumpulan popup.
+
+---
+
+## 5) Aset & Folder Proyek
+Saat **Create Project**, buat:
+```
+/storage/projects/{slug}/assets/
+  ├─ gambar/
+  └─ dokumen/
+```
+- Tombol **Upload Assets** (drag–drop) → file mendapatkan URL publik `/storage/projects/{slug}/assets/...` untuk dipakai di Properties/Code.
+
+---
+
+## 6) Export ZIP (hasil akhir)
+Struktur:
+```
+Proyek-Tur-Virtual/
+├─ index.html
+└─ aset-custom/
+   ├─ css/style.css
+   ├─ js/data.js        # window.PANONESIA_CONFIG = {...}
+   ├─ js/script.js      # runtime + listener trigger
+   ├─ gambar/...
+   └─ dokumen/...
+```
+- **Path relatif** (bisa dibuka offline).  
+- **CSP** minimal di `<head>` `index.html`:
+  ```html
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' data: https:;
+    script-src 'self';
+    style-src 'self' 'unsafe-inline';
+    frame-src https://www.youtube.com https://player.vimeo.com;
+  ">
+  ```
+
+---
+
+## 7) Rutin Harian
+1. Jalankan **Apache + MySQL** (XAMPP).  
+2. `php artisan serve` (Laravel).  
+3. Buka **/admin** → buat **Project/Scenes/Popups** + upload aset.  
+4. Buka **/editor/{project}** → edit & preview.  
+5. **Export ZIP** → hasil siap dipakai.
+
+---
+
+## 8) Troubleshooting Cepat
+- **Halaman tidak tampil** → cek `php artisan serve`, versi PHP, ekstensi `fileinfo`, `openssl`, `gd`.
+- **DB gagal** → cek `.env`, pastikan DB ada di phpMyAdmin.
+- **Upload gagal** → `php artisan storage:link`, cek izin folder `storage/` & `public/`.
+- **Preview tidak hidup** → pastikan kontrak `postMessage` dipatuhi & iframe punya `sandbox` yang benar.
+- **Export beda dengan preview** → pastikan **path relatif** & **CSP** tidak memblokir resource.
+
+---
+
+## 9) Konsistensi dengan `implementasi-dashboard.md`
+- **Selaras**: keduanya **popup-only** dan memakai **preview HTML/CSS/JS** (tanpa 360).  
+- **Scenes** tetap ada untuk pengelompokan, bukan karena viewer 360.  
+- **Kontrak postMessage**, **struktur export**, **trigger JS per popup** → **konsisten**.  
+- **Perbedaan yang sudah dihapus**: referensi ke Pannellum/engine 360 tidak ada di panduan ini.
+
+---
+
+### TL;DR
+**Install alat → buat Laravel + Filament + Media Library → siapkan Resources Projects/Scenes/Popups → jalankan Editor (iframe preview, postMessage) → upload aset → export ZIP.** Semuanya konsisten dengan `implementasi-dashboard.md` versi popup-only.
