@@ -1,83 +1,86 @@
-
-Cetak Biru Pengembangan: CMS Tur Virtual Interaktif (Versi Realistis)
-Dokumen ini merinci arsitektur, spesifikasi teknis, dan rencana pengembangan untuk membangun sebuah Visual UI Builder yang berfungsi sebagai CMS untuk overlay tur virtual. Versi ini difokuskan pada kemudahan implementasi dan realisme untuk mencapai produk fungsional (MVP) dengan cepat.
+Cetak Biru Pengembangan: CMS Tur Virtual Interaktif (Versi Final & Realistis)
+Dokumen ini adalah panduan arsitektur dan teknis lengkap untuk membangun Visual UI Builder bagi tur virtual. Dokumen ini telah diperkaya berdasarkan analisis mendalam untuk memastikan produk akhir yang kuat, aman, dan mudah dikembangkan.
 
 1. Tujuan Proyek (Project Goal)
-Tujuan utama proyek ini adalah membangun aplikasi web yang memungkinkan pengguna merancang, mengelola, dan men-generate modul UI interaktif (seperti pop-up, sidebar, dan galeri) secara visual. Output dari aplikasi ini adalah sebuah paket aset (.zip) yang dapat dengan mudah diintegrasikan ke dalam platform tur virtual pihak ketiga hanya dengan modifikasi minimal pada file index.html bawaan.
+Membangun aplikasi web (CMS) yang memungkinkan pengguna merancang, mengelola, dan men-generate modul UI interaktif secara visual. Output dari aplikasi ini adalah sebuah paket aset (.zip) yang dapat dengan mudah diintegrasikan ke dalam platform tur virtual pihak ketiga hanya dengan modifikasi minimal pada file index.html bawaan.
 
 2. Arsitektur & Rekomendasi Stack
 2.1. Filosofi Arsitektur: Hibrida yang Disederhanakan
-Kita akan menggunakan pendekatan hibrida yang kuat dengan fokus pada kesederhanaan di sisi frontend untuk mempercepat pengembangan.
+Kita menggunakan pendekatan hibrida yang kuat, dengan fokus pada kecepatan dan kemudahan pengembangan.
 
-Pekerjaan Admin (90%): Semua tugas standar seperti manajemen proyek dan aset akan ditangani oleh Filament. Ini adalah cara tercepat dan paling efisien.
+90% Pekerjaan Admin (CRUD Standar): Ditangani oleh Filament. Ini adalah cara tercepat untuk membangun manajemen proyek dan aset.
 
-Pekerjaan Inti (10%): Fitur utama, yaitu Live Editor, akan dibangun menggunakan halaman React khusus dengan desain antarmuka yang lebih sederhana dan terfokus.
+10% Pekerjaan Inti (Live Editor): Ditangani oleh halaman React khusus dengan desain antarmuka yang terfokus dan sederhana.
 
 2.2. Komponen Utama & Teknologi
+Komponen
+
+Teknologi yang Direkomendasikan
+
+Fungsi Utama
+
 Backend & Admin
 
-Teknologi: Laravel 12 + Filament 4.
+Laravel 12 + Filament 4
 
-Fungsi: Sebagai inti aplikasi, manajemen data, dan auto-generate halaman admin.
+Inti aplikasi, manajemen data, dan auto-generate halaman admin.
 
 Manajemen Aset
 
-Teknologi: Spatie Media Library (Paket Laravel).
+Spatie Media Library (Paket Laravel)
 
-Fungsi: Mengelola unggahan, penyimpanan, dan koleksi file (gambar, PDF, audio).
+Mengelola unggahan, penyimpanan, dan koleksi file (gambar, PDF, audio).
 
 Editor Live
 
-Teknologi: Halaman khusus React (menggunakan Vite atau Inertia.js).
+Halaman khusus React (Vite atau Inertia.js)
 
-Fungsi: Membangun antarmuka editor visual dengan layout 2-panel yang sederhana.
+Membangun antarmuka editor visual dengan layout 2-panel yang sederhana.
 
 State Management
 
-Teknologi: Zustand (Pustaka React).
+Zustand (Pustaka React)
 
-Fungsi: Mengelola state editor config_json secara efisien dan real-time.
+Mengelola state editor config_json secara efisien dan real-time.
 
 UI Editor
 
-Teknologi: TailwindCSS + shadcn/ui (Komponen React).
+TailwindCSS + shadcn/ui (Komponen React)
 
-Fungsi: Membangun antarmuka panel editor yang modern dan responsif.
+Membangun antarmuka panel editor yang modern dan responsif.
 
 Database
 
-Teknologi: PostgreSQL atau MySQL.
+PostgreSQL atau MySQL
 
-Fungsi: Menyimpan semua data konfigurasi proyek, template, dan aset.
+Menyimpan semua data konfigurasi proyek, template, dan aset.
 
 Ekspor ZIP
 
-Teknologi: ZipStream (maennche/zipstream-php).
+ZipStream (maennche/zipstream-php)
 
-Fungsi: Men-generate file .zip secara on-the-fly tanpa membebani memori server.
+Men-generate file .zip secara on-the-fly.
 
 Infrastruktur
 
-Teknologi: VPS (Virtual Private Server) + aaPanel.
+VPS (Virtual Private Server) + aaPanel
 
-Fungsi: Hosting dan manajemen server.
+Hosting dan manajemen server.
 
 3. Desain Database & Skema Data
-Struktur data akan disimpan sebagai berikut:
+projects: Menyimpan config_json utama dan template_id.
 
-projects: Menyimpan config_json utama untuk setiap proyek.
+project_versions: Menyimpan histori config_json untuk rollback.
 
-project_versions: Digunakan untuk mencatat histori dan memungkinkan rollback.
+templates: Menyimpan name, key unik, dan schema_json.
 
-templates: Untuk skalabilitas di masa depan, jika ingin menambah template baru.
+media: Dikelola secara otomatis oleh Spatie Media Library.
 
-media: Tabel ini akan dikelola secara otomatis oleh Spatie Media Library.
-
-Berikut adalah contoh struktur data config_json:
-
+config_json (Contoh)
 {
+  "schemaVersion": "1.0",
   "project": { "title": "Tur Virtual Kantor Pusat" },
-  "background360": { "src": "/media/panos/lobby.jpg" },
+  "background360": { "type": "equirect", "src": "/media/panos/lobby.jpg", "yaw": 120, "fov": 75 },
   "elements": [
     { "id": "uuid-1", "type": "popup-image", "label": "Poster Acara", "src": "/media/images/poster.jpg" },
     { "id": "uuid-2", "type": "sidebar", "label": "Menu Utama", "items": [
@@ -88,64 +91,75 @@ Berikut adalah contoh struktur data config_json:
 }
 
 4. Alur Kerja Inti & Desain Editor
-Fokus utama editor adalah pada alur kerja pilih → isi → lihat.
+4.1. Arsitektur Editor Live Preview (Disederhanakan)
+Fokus utama adalah pada alur kerja pilih → isi → lihat.
 
-Langkah 1: Panel Kiri (Kontrol & Editor)
+Panel Kiri (Kontrol & Editor): Sidebar untuk memilih modul (Pop-up, Sidebar, dll.) dan area utama untuk menampilkan form isian yang relevan.
 
-Pengguna memilih kategori modul yang ingin diedit (misalnya, Pop-up).
+Panel Kanan (Preview): Sebuah <iframe> yang di-sandbox (sandbox="allow-scripts allow-modals") dengan toolbar untuk switch device.
 
-Area editor kemudian menampilkan daftar pop-up yang ada dan sebuah formulir untuk mengedit atau menambah yang baru.
+Protokol Komunikasi (postMessage):
 
-Langkah 2: Panel Kanan (Preview)
+Editor → Preview: Mengirim pesan { type: "UPDATE", payload: { newConfig: {...} } } setiap kali ada perubahan (dengan debounce 300ms).
 
-Panel ini akan berisi sebuah <iframe> yang menampilkan hasil render dari konfigurasi Anda secara real-time.
+Preview → Editor: Mengirim pesan { type: "SELECT", payload: { elementId: "..." } } saat elemen di preview diklik.
 
-Terdapat toolbar sederhana untuk beralih antara tampilan Mobile dan Desktop.
+4.2. Sistem Template Berbasis Skema
+Setiap template UI akan memiliki schema.json yang mendefinisikan form-nya. Editor React akan membaca skema ini untuk membangun form secara dinamis. Ini adalah kunci untuk skalabilitas.
 
-Langkah 3: Alur Data Real-time
-
-Setiap perubahan di form pada Panel Kiri akan memperbarui state config_json.
-
-Objek config_json yang baru akan dikirim ke <iframe> menggunakan window.postMessage.
-
-Script di dalam <iframe> akan me-render ulang UI berdasarkan data baru tersebut.
-
-5. Rencana Pengembangan MVP (Realistis)
-Proyek akan dibangun dalam beberapa fase:
-
+5. Rencana Pengembangan MVP (Dengan Kriteria Jelas)
 Fase 1: Fondasi Backend
+Tujuan: Menyiapkan struktur dasar aplikasi.
 
-Setup Laravel + Filament.
+Kriteria Selesai:
 
-Buat CRUD untuk Projects dan Assets.
+Proyek Laravel dan Filament berhasil diinstal.
 
-Fase 2: Inti Editor
+CRUD untuk Projects (dengan kolom config_json) berfungsi.
 
-Buat halaman editor React dengan layout 2-panel.
+Spatie Media Library terintegrasi dan bisa meng-upload file.
 
-Implementasikan komunikasi postMessage ke <iframe>.
+Fase 2: Inti Editor & Live Preview
+Tujuan: Membangun jantung aplikasi, yaitu editor visual.
 
-Tambahkan viewer 360 sebagai background di <iframe>.
+Kriteria Selesai:
 
-Fase 3: Fitur Pertama & Ekspor
+Halaman editor React dapat memuat config_json dari backend.
 
-Bangun modul Image Popup secara lengkap.
+Panel Kiri (Editor) dan Panel Kanan (<iframe> Preview) berhasil ditampilkan.
 
-Implementasikan fitur Auto-save.
+Komunikasi postMessage (Editor → Preview) berjalan dengan debounce.
 
-Buat logika Ekspor ke ZIP.
+Viewer 360 (Pannellum) berhasil tampil sebagai background di <iframe>.
+
+Fitur Auto-save config_json berfungsi.
+
+Fase 3: Fitur Lengkap Pertama & Ekspor
+Tujuan: Mengimplementasikan satu alur penuh dari pembuatan hingga ekspor.
+
+Kriteria Selesai:
+
+Modul Image Popup berfungsi penuh (tambah, edit, hapus).
+
+Two-way selection (Preview → Editor) untuk Image Popup berjalan.
+
+Fungsi Ekspor ke ZIP menghasilkan folder aset-custom yang fungsional.
+
+Terdapat tombol "Export Preview" untuk verifikasi sebelum download.
 
 Fase 4: Pengembangan Lanjutan
+Tujuan: Memperkaya aplikasi dengan lebih banyak fitur.
 
-Tambahkan modul-modul UI lainnya secara bertahap.
+Kriteria Selesai:
 
-Implementasikan sistem template sederhana.
+Minimal 3 modul UI baru ditambahkan (misal: Sidebar, PDF Viewer).
 
-Tambahkan fitur Versioning.
+Sistem Template berbasis schema.json diimplementasikan.
+
+Fitur Versioning (project_versions) dapat menyimpan dan me-restore konfigurasi.
 
 6. Integrasi & Metode Trigger
-Langkah 1: Siapkan Struktur Folder Output
-
+6.1. Struktur Folder Output
 Proyek-Tur-Virtual/
 ├── index.html
 └── aset-custom/
@@ -159,19 +173,24 @@ Proyek-Tur-Virtual/
     └── dokumen/
         └── (file pdf)
 
-Langkah 2: Lakukan Injeksi Kode Manual
+6.2. Kode Injeksi Manual
+Pengguna akan menambahkan kode berikut ke index.html bawaan mereka.
 
-Tambahkan di dalam <head>:
+Di dalam <head>:
 
 <link rel="stylesheet" href="./aset-custom/css/style.css">
 
-Tambahkan sebelum </body>:
+Tepat sebelum </body>:
 
 <script src="./aset-custom/js/data.js" defer></script>
 <script src="./aset-custom/js/script.js" defer></script>
 
-Langkah 3: Atur Mekanisme Trigger
-
+6.3. Mekanisme Trigger
 Fungsi di script.js akan dipanggil melalui fitur "Execute JavaScript" pada hotspot di dalam editor tur virtual bawaan. Contoh:
 
 showPopup('uuid-1');
+
+7. Keamanan (Wajib)
+Sanitasi Input: Gunakan DOMPurify pada semua input HTML dari pengguna sebelum disimpan ke database.
+
+Content Security Policy (CSP): Hasil ekspor index.html harus menyertakan meta tag CSP untuk membatasi eksekusi script dan pemuatan sumber daya eksternal.
