@@ -2,13 +2,13 @@
 
 Dokumen ini merinci arsitektur, spesifikasi teknis, dan rencana pengembangan untuk membangun sebuah **Visual UI Builder** yang berfungsi sebagai CMS untuk *overlay* tur virtual. Versi ini difokuskan pada **kemudahan implementasi dan realisme** untuk mencapai produk fungsional (MVP) dengan cepat.
 
----
+
 
 ## 1. Tujuan Proyek (Project Goal)
 
 Membangun aplikasi web yang memungkinkan pengguna merancang, mengelola, dan men-generate modul UI interaktif (pop-up, sidebar, galeri) secara visual. Output dari aplikasi ini adalah sebuah paket aset (`.zip`) yang dapat dengan mudah diintegrasikan ke dalam platform tur virtual pihak ketiga (seperti TDV Player) hanya dengan modifikasi minimal pada file `index.html` bawaan.
 
----
+
 
 ## 2. Arsitektur & Rekomendasi Stack
 
@@ -32,7 +32,7 @@ Kita menggunakan pendekatan hibrida yang kuat dengan fokus pada kesederhanaan di
 | **Ekspor ZIP** | `ZipStream` (`maennche/zipstream-php`)                                       | Men-generate file `.zip` secara *on-the-fly*.                                |
 | **Infrastruktur** | `VPS (Virtual Private Server) + aaPanel`                                     | Hosting dan manajemen server.                                                |
 
----
+
 
 ## 3. Desain Database & Skema Data
 
@@ -55,3 +55,4 @@ Kita menggunakan pendekatan hibrida yang kuat dengan fokus pada kesederhanaan di
   ],
   "customCode": { "html": "", "css": "", "js": "" }
 }
+```
