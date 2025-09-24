@@ -17,21 +17,18 @@ Pertama, buka folder hasil *export* tur 3DVista Anda. Buat beberapa folder dan f
 
 Struktur akhir folder Anda akan terlihat seperti ini:
 
-- FOLDER-TUR-ANDA/
-  |- index.htm
-  |- script.js
-  |- ... (file 3dvista lainnya) ...
-  |
-  |- addon-kustom/
-  |  |- addon-loader.js         <-- (Akan kita isi di Langkah 2)
-  |  |- addon-style.css         <-- (Akan kita isi di Langkah 2)
-  |
-  |- data-popups/
-  |  |- konten.js               <-- (Akan kita isi di Langkah 3)
-  |
-  |- media/
-     |- ... (semua aset gambar tur) ...
----
+Proyek-Tur-Virtual/
+├── index.html
+└── aset-custom/
+    ├── css/
+    │   └── style.css
+    ├── js/
+    │   └── script.js
+    ├── gambar/
+    │   ├── latar-360.jpg
+    │   └── logo.png
+    └── dokumen/
+        └── brosur.pdf
 
 ## Langkah 2: Isi File Inti Addon (`Engine`)
 
