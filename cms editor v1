@@ -1,82 +1,80 @@
+
 Cetak Biru Pengembangan: CMS Tur Virtual Interaktif (Versi Realistis)
 Dokumen ini merinci arsitektur, spesifikasi teknis, dan rencana pengembangan untuk membangun sebuah Visual UI Builder yang berfungsi sebagai CMS untuk overlay tur virtual. Versi ini difokuskan pada kemudahan implementasi dan realisme untuk mencapai produk fungsional (MVP) dengan cepat.
 
 1. Tujuan Proyek (Project Goal)
-Membangun aplikasi web yang memungkinkan pengguna merancang, mengelola, dan men-generate modul UI interaktif (pop-up, sidebar, galeri) secara visual. Output dari aplikasi ini adalah sebuah paket aset (.zip) yang dapat dengan mudah diintegrasikan ke dalam platform tur virtual pihak ketiga (seperti TDV Player) hanya dengan modifikasi minimal pada file index.html bawaan.
+Tujuan utama proyek ini adalah membangun aplikasi web yang memungkinkan pengguna merancang, mengelola, dan men-generate modul UI interaktif (seperti pop-up, sidebar, dan galeri) secara visual. Output dari aplikasi ini adalah sebuah paket aset (.zip) yang dapat dengan mudah diintegrasikan ke dalam platform tur virtual pihak ketiga hanya dengan modifikasi minimal pada file index.html bawaan.
 
 2. Arsitektur & Rekomendasi Stack
 2.1. Filosofi Arsitektur: Hibrida yang Disederhanakan
-Kita menggunakan pendekatan hibrida yang kuat dengan fokus pada kesederhanaan di sisi frontend.
+Kita akan menggunakan pendekatan hibrida yang kuat dengan fokus pada kesederhanaan di sisi frontend untuk mempercepat pengembangan.
 
-90% Pekerjaan Admin (CRUD Standar): Ditangani oleh Filament. Ini adalah cara tercepat untuk membangun manajemen proyek dan aset.
+Pekerjaan Admin (90%): Semua tugas standar seperti manajemen proyek dan aset akan ditangani oleh Filament. Ini adalah cara tercepat dan paling efisien.
 
-10% Pekerjaan Inti (Live Editor): Ditangani oleh halaman React khusus, namun dengan desain antarmuka yang jauh lebih sederhana untuk mempermudah pengembangan.
+Pekerjaan Inti (10%): Fitur utama, yaitu Live Editor, akan dibangun menggunakan halaman React khusus dengan desain antarmuka yang lebih sederhana dan terfokus.
 
 2.2. Komponen Utama & Teknologi
-Komponen
-
-Teknologi yang Direkomendasikan
-
-Fungsi Utama
-
 Backend & Admin
 
-Laravel 12 + Filament 4
+Teknologi: Laravel 12 + Filament 4.
 
-Inti aplikasi, manajemen data, dan auto-generate halaman admin.
+Fungsi: Sebagai inti aplikasi, manajemen data, dan auto-generate halaman admin.
 
 Manajemen Aset
 
-Spatie Media Library (Paket Laravel)
+Teknologi: Spatie Media Library (Paket Laravel).
 
-Mengelola unggahan, penyimpanan, dan koleksi file (gambar, PDF, audio).
+Fungsi: Mengelola unggahan, penyimpanan, dan koleksi file (gambar, PDF, audio).
 
 Editor Live
 
-Halaman khusus React (Vite atau Inertia.js)
+Teknologi: Halaman khusus React (menggunakan Vite atau Inertia.js).
 
-Membangun antarmuka editor visual dengan layout 2-panel yang sederhana.
+Fungsi: Membangun antarmuka editor visual dengan layout 2-panel yang sederhana.
 
 State Management
 
-Zustand (Pustaka React)
+Teknologi: Zustand (Pustaka React).
 
-Mengelola state editor config_json secara efisien.
+Fungsi: Mengelola state editor config_json secara efisien dan real-time.
 
 UI Editor
 
-TailwindCSS + shadcn/ui (Komponen React)
+Teknologi: TailwindCSS + shadcn/ui (Komponen React).
 
-Membangun antarmuka panel editor yang modern dan responsif.
+Fungsi: Membangun antarmuka panel editor yang modern dan responsif.
 
 Database
 
-PostgreSQL atau MySQL
+Teknologi: PostgreSQL atau MySQL.
 
-Menyimpan semua data konfigurasi proyek, template, dan aset.
+Fungsi: Menyimpan semua data konfigurasi proyek, template, dan aset.
 
 Ekspor ZIP
 
-ZipStream (maennche/zipstream-php)
+Teknologi: ZipStream (maennche/zipstream-php).
 
-Men-generate file .zip secara on-the-fly.
+Fungsi: Men-generate file .zip secara on-the-fly tanpa membebani memori server.
 
 Infrastruktur
 
-VPS (Virtual Private Server) + aaPanel
+Teknologi: VPS (Virtual Private Server) + aaPanel.
 
-Hosting dan manajemen server.
+Fungsi: Hosting dan manajemen server.
 
 3. Desain Database & Skema Data
-projects: Menyimpan config_json utama.
+Struktur data akan disimpan sebagai berikut:
 
-project_versions: Untuk histori.
+projects: Menyimpan config_json utama untuk setiap proyek.
 
-templates: Untuk skalabilitas di masa depan.
+project_versions: Digunakan untuk mencatat histori dan memungkinkan rollback.
 
-media: Dikelola oleh Spatie.
+templates: Untuk skalabilitas di masa depan, jika ingin menambah template baru.
 
-config_json (Contoh)
+media: Tabel ini akan dikelola secara otomatis oleh Spatie Media Library.
+
+Berikut adalah contoh struktur data config_json:
+
 {
   "project": { "title": "Tur Virtual Kantor Pusat" },
   "background360": { "src": "/media/panos/lobby.jpg" },
@@ -89,42 +87,39 @@ config_json (Contoh)
   "customCode": { "html": "", "css": "", "js": "" }
 }
 
-4. Alur Kerja Inti (Disederhanakan)
-4.1. Arsitektur Editor Live Preview
-Fokus utama adalah pada alur kerja pilih → isi → lihat. Kita gunakan layout 2-panel dengan Tab.
+4. Alur Kerja Inti & Desain Editor
+Fokus utama editor adalah pada alur kerja pilih → isi → lihat.
 
-A. Panel Kiri: Kontrol & Editor
-Navigasi Utama: Sidebar sederhana untuk memilih kategori modul (Pop-up, Sidebar, Custom Code, dll.).
+Langkah 1: Panel Kiri (Kontrol & Editor)
 
-Area Editor: Area ini berubah isinya sesuai modul yang dipilih untuk menampilkan daftar item dan formulir isian.
+Pengguna memilih kategori modul yang ingin diedit (misalnya, Pop-up).
 
-B. Panel Kanan: Preview & Konfigurasi
-Panel ini berisi dua tab sederhana.
+Area editor kemudian menampilkan daftar pop-up yang ada dan sebuah formulir untuk mengedit atau menambah yang baru.
 
-Tab 1: "Live Preview": Berisi <iframe> dengan background 360 dan toolbar switch device (Mobile/Desktop).
+Langkah 2: Panel Kanan (Preview)
 
-Tab 2: "Konfigurasi JSON": textarea untuk menampilkan config_json secara live untuk debugging.
+Panel ini akan berisi sebuah <iframe> yang menampilkan hasil render dari konfigurasi Anda secara real-time.
 
-C. Alur Data Real-time
-Aksi Pengguna: Pengguna mengubah nilai di form Panel Kiri.
+Terdapat toolbar sederhana untuk beralih antara tampilan Mobile dan Desktop.
 
-Update State: React memperbarui state config_json.
+Langkah 3: Alur Data Real-time
 
-Kirim Seluruh Config: useEffect mengirim seluruh objek config_json ke <iframe> via window.postMessage.
+Setiap perubahan di form pada Panel Kiri akan memperbarui state config_json.
 
-Render Ulang: Script di dalam <iframe> menerima config baru, menghapus elemen lama, dan me-render ulang dari awal.
+Objek config_json yang baru akan dikirim ke <iframe> menggunakan window.postMessage.
 
-4.2. Proses Ekspor ZIP
-Backend mengambil config_json, me-render template, mengumpulkan aset, dan membuat file .zip.
+Script di dalam <iframe> akan me-render ulang UI berdasarkan data baru tersebut.
 
 5. Rencana Pengembangan MVP (Realistis)
-Fase 1 (Fondasi Backend):
+Proyek akan dibangun dalam beberapa fase:
+
+Fase 1: Fondasi Backend
 
 Setup Laravel + Filament.
 
 Buat CRUD untuk Projects dan Assets.
 
-Fase 2 (Inti Editor):
+Fase 2: Inti Editor
 
 Buat halaman editor React dengan layout 2-panel.
 
@@ -132,7 +127,7 @@ Implementasikan komunikasi postMessage ke <iframe>.
 
 Tambahkan viewer 360 sebagai background di <iframe>.
 
-Fase 3 (Fitur Pertama & Ekspor):
+Fase 3: Fitur Pertama & Ekspor
 
 Bangun modul Image Popup secara lengkap.
 
@@ -140,16 +135,17 @@ Implementasikan fitur Auto-save.
 
 Buat logika Ekspor ke ZIP.
 
-Fase 4 (Pengembangan Lanjutan):
+Fase 4: Pengembangan Lanjutan
 
-Tambahkan modul UI lainnya satu per satu.
+Tambahkan modul-modul UI lainnya secara bertahap.
 
-Implementasikan Sistem Template (schema.json).
+Implementasikan sistem template sederhana.
 
 Tambahkan fitur Versioning.
 
 6. Integrasi & Metode Trigger
-6.1. Struktur Folder Output
+Langkah 1: Siapkan Struktur Folder Output
+
 Proyek-Tur-Virtual/
 ├── index.html
 └── aset-custom/
@@ -163,17 +159,19 @@ Proyek-Tur-Virtual/
     └── dokumen/
         └── (file pdf)
 
-6.2. Kode Injeksi Manual
-Di dalam <head>:
+Langkah 2: Lakukan Injeksi Kode Manual
+
+Tambahkan di dalam <head>:
 
 <link rel="stylesheet" href="./aset-custom/css/style.css">
 
-Sebelum </body>:
+Tambahkan sebelum </body>:
 
 <script src="./aset-custom/js/data.js" defer></script>
 <script src="./aset-custom/js/script.js" defer></script>
 
-6.3. Mekanisme Trigger
-Fungsi di script.js akan dipanggil melalui fitur "Execute JavaScript" pada hotspot di dalam editor tur virtual. Contoh:
+Langkah 3: Atur Mekanisme Trigger
+
+Fungsi di script.js akan dipanggil melalui fitur "Execute JavaScript" pada hotspot di dalam editor tur virtual bawaan. Contoh:
 
 showPopup('uuid-1');
