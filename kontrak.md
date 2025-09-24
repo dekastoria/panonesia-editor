@@ -1,0 +1,114 @@
+
+# KONTRAK — Panonesia Editor (Popup‑Only) — v1.3
+**Dokumen bersama** untuk UI & backend. Semua implementasi **wajib** mengikuti kontrak ini.
+
+---
+
+## 1) Format ID (Wajib)
+- **Popup ID**: `pop-<scene>-<type>-<nnn>`  
+  - `<scene>`: kode scene (mis. `s01`, `lobby`) — kebab‑case, ≤ 20 char.  
+  - `<type>`: `img|txt|pdf|yt|vid|gal|cus|menu`.  
+  - `<nnn>`: nomor 3 digit (`001`, `002`, …) **kecuali** tipe `menu` boleh slug (`main`).  
+- **Contoh**: `pop-s02-txt-002`, `pop-lobby-gal-003`, `pop-global-menu-main`.
+
+**Aturan unik**: cek duplikat saat save/export; error jika bentrok.
+
+---
+
+## 2) Protokol `postMessage` (Wajib)
+Semua payload menyertakan `proto:"panonesia/1"`.
+
+### Editor → Preview
+- `init { schemaVersion, templateKey, config }`
+- `update { path, value }`       // patch granular
+- `bulk { patches:[{path,value}, ...] }`  // debounce 150–300 ms
+- `inspect { nodeId }`
+- `refresh { reason?: "user" | "asset" }`
+
+### Preview → Editor
+- `ready { runtime }`
+- `select { nodeId }`
+- `log { level: "info"|"warn"|"error", args: any[] }`
+- `diagnostics { items:[{code,level,message,nodeId?}], ts }`
+
+---
+
+## 3) Struktur Export (Wajib)
+```
+Proyek-Tur-Virtual/
+├─ index.html
+└─ aset-custom/
+   ├─ css/style.css
+   ├─ js/data.js      # window.PANONESIA_CONFIG = {...}
+   ├─ js/script.js    # runtime + listener + gallery
+   ├─ gambar/...
+   └─ dokumen/...
+```
+**CSP (index.html):**  
+`default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src https://www.youtube.com https://player.vimeo.com;`
+
+---
+
+## 4) Skema Menu (Wajib)
+```json
+{
+  "enabled": true,
+  "position": "left|right|top|bottom",
+  "theme": "light|dark",
+  "items": [
+    { "label": "About",   "icon": "aset-custom/gambar/user.svg",  "action": "show", "target": "pop-s01-txt-001", "tooltip": "" },
+    { "label": "Gallery", "icon": "aset-custom/gambar/photo.svg", "action": "show", "target": "pop-s01-gal-002", "tooltip": "" },
+    { "label": "PDF",     "icon": "aset-custom/gambar/pdf.svg",   "action": "url",  "target": "aset-custom/dokumen/menu.pdf" }
+  ]
+}
+```
+
+**Action values:** `show | hide | switch | url | trigger`.  
+- `show/hide`: target = `popupId` (format ID di §1).  
+- `switch`: target = `scene key` (mis. `s02`).  
+- `url`: target = URL (pdf/file/link).  
+- `trigger`: target = string bebas (diteruskan ke runtime callback).
+
+---
+
+## 5) Field Template Minimal (Auto‑Form)
+Setiap template **wajib** memahami field dasar ini (bila relevan):
+- `position`: `Top|Bottom|Left|Right|Center`
+- `theme`: `Light|Dark`
+- `title`: string
+- `body`: string/HTML (safe)
+- `img`: path asset
+- `pdf`: path asset
+- `youtubeId`: string
+
+---
+
+## 6) Snippet Trigger (3DVista)
+**SHOW (one‑liner):**
+```js
+(function(){var M={proto:"panonesia/1",type:"trigger",action:"show",id:"pop-s01-img-001"};try{window.postMessage(M,"*");window.parent&&window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}})();
+```
+**HIDE (one‑liner):**
+```js
+(function(){var M={proto:"panonesia/1",type:"trigger",action:"hide",id:"pop-s01-img-001"};try{window.postMessage(M,"*");window.parent&&window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}})();
+```
+**Helper (opsional, tempel sekali):**
+```js
+window.POP={
+  show:id=>{var M={proto:"panonesia/1",type:"trigger",action:"show",id};window.postMessage(M,"*");try{window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}},
+  hide:id=>{var M={proto:"panonesia/1",type:"trigger",action:"hide",id};window.postMessage(M,"*");try{window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}}
+};
+// Contoh: POP.show("pop-s02-txt-002");
+```
+
+---
+
+## 7) Diagnostics (Minimal)
+- **E001** asset 404  
+- **E002** ID ganda  
+- **E003** tipe file tidak didukung  
+- **E004** ukuran file berlebih  
+- **E005** YouTube ID invalid  
+- **W101** FOV/parameter di‑clamp (bila ada)  
+- **W102** kontras rendah (a11y)
+
