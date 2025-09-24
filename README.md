@@ -1,4 +1,3 @@
-[master-spec-v1.4.md](https://github.com/user-attachments/files/22516579/master-spec-v1.4.md)
 # Panonesia Editor — **Master Spec v1.4** (Popup‑Only, HTML Preview)
 > **Acuan Dasar:** README.md (v1.4) — diselaraskan dengan `implementasi-dashboard.md`, `alur-produk.md`, dan `kontrak.md` terbaru.  
 > **Perubahan penting:** (1) **Format ID** distandardkan: `pop-<scene>-<type>-<nnn>`. (2) **Scenes = naming only** (tanpa import panorama/thumbnail).
