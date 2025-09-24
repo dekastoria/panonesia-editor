@@ -1,0 +1,233 @@
+# Popup Menu Library — Positions & Themes (Light/Dark)
+
+Dokumen ini berisi **model tombol/menu** siap pakai untuk **kanan, kiri, atas (navbar), dan bawah (dock)** dalam **dua tema**: *light* & *dark*.  
+Semua contoh kompatibel dengan arsitektur **popup-only**: di-render di **iframe sandbox**, aksi memakai **postMessage trigger** yang sama.
+
+## 0) Kontrak & Placeholder
+- `{{id}}` — ID unik popup menu (mis. `p1--menu--main`)
+- `{{items}}` — HTML `<li>` item (digenerasi dari array items)
+- `{{theme}}` — `light|dark`
+- `{{position}}` — `left|right|top|bottom`
+
+**Data item (editor → template):**
+```json
+{
+  "items": [
+    { "label": "Poster", "icon": "/storage/.../poster.svg", "action": "show", "target": "p1--image--poster01" },
+    { "label": "Kamar",  "icon": "/storage/.../room.svg",   "action": "switch-scene", "target": "p2" },
+    { "label": "Brosur", "icon": "/storage/.../pdf.svg",    "action": "url", "target": "https://.../menu.pdf" }
+  ]
+}
+```
+
+**Aksi standar (runtime):**
+```js
+function panonesiaDispatch(msg){ try{
+  window.postMessage(msg,"*");
+  if(window.parent) window.parent.postMessage(msg,"*");
+  try{ new BroadcastChannel("panonesia").postMessage(msg); }catch(e){}
+}catch(e){}}
+```
+
+Item klik mengirim:
+```js
+panonesiaDispatch({ proto:"panonesia/1", type:"trigger", action:"show|hide|switch-scene|url|custom", id: "<popupIdOrSceneId>", href:"<url?>" });
+```
+
+---
+
+## 1) Sidebar Kiri — Light
+```html
+<nav id="{{id}}" class="pmenu sidebar left light" role="menu" aria-label="Main menu">
+  <ul>
+    {{items}}
+  </ul>
+</nav>
+<style>
+.pmenu.sidebar{position:fixed;top:16px;bottom:16px;width:64px;border-radius:16px;padding:10px;z-index:9998;
+  backdrop-filter:blur(8px)}
+.pmenu.light{background:rgb(255 255 255/.85);border:1px solid #e5e7eb;box-shadow:0 10px 30px rgb(0 0 0/.08)}
+.pmenu.left{left:16px}
+.pmenu ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.pmenu li{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;cursor:pointer;
+  transition:transform .12s ease, background .12s ease}
+.pmenu.light li{background:#fff;color:#111;border:1px solid #f1f5f9}
+.pmenu li:hover{transform:translateY(-1px)}
+.pmenu li img{width:22px;height:22px;object-fit:contain}
+</style>
+<script>
+(function(){
+  const el=document.getElementById("{{id}}"); if(!el) return;
+  el.querySelectorAll("li[data-action]").forEach(li=>{
+    li.addEventListener("click",()=>{
+      const a=li.dataset.action, t=li.dataset.target, href=li.dataset.href;
+      panonesiaDispatch({ proto:"panonesia/1", type:"trigger", action:a, id:t, href });
+    });
+  });
+})();
+</script>
+```
+
+---
+
+## 2) Sidebar Kiri — Dark
+```html
+<nav id="{{id}}" class="pmenu sidebar left dark" role="menu" aria-label="Main menu">
+  <ul>{{items}}</ul>
+</nav>
+<style>
+.pmenu.sidebar{position:fixed;top:16px;bottom:16px;width:64px;border-radius:16px;padding:10px;z-index:9998;backdrop-filter:blur(8px)}
+.pmenu.dark{background:rgb(15 17 23/.75);border:1px solid #1f2937;box-shadow:0 10px 30px rgb(0 0 0/.35);color:#e5e7eb}
+.pmenu.left{left:16px}
+.pmenu ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.pmenu li{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;cursor:pointer;
+  transition:transform .12s ease, background .12s ease;background:rgb(255 255 255/.04);border:1px solid rgb(255 255 255/.06)}
+.pmenu li:hover{transform:translateY(-1px);background:rgb(255 255 255/.08)}
+.pmenu li img{width:22px;height:22px;filter:invert(1) saturate(0) brightness(1.6)}
+</style>
+<script>(function(){const e=document.getElementById("{{id}}");if(!e)return;
+e.querySelectorAll("li[data-action]").forEach(li=>li.addEventListener("click",()=>{panonesiaDispatch({proto:"panonesia/1",type:"trigger",action:li.dataset.action,id:li.dataset.target,href:li.dataset.href});}));})();</script>
+```
+
+---
+
+## 3) Sidebar Kanan — Light
+```html
+<nav id="{{id}}" class="pmenu sidebar right light" role="menu"><ul>{{items}}</ul></nav>
+<style>
+.pmenu.sidebar{position:fixed;top:16px;bottom:16px;width:64px;border-radius:16px;padding:10px;z-index:9998;backdrop-filter:blur(8px)}
+.pmenu.right{right:16px}
+/* gunakan style dari model 1 (light) */
+</style>
+<script>(function(){const e=document.getElementById("{{id}}");if(!e)return;
+e.querySelectorAll("li[data-action]").forEach(li=>li.addEventListener("click",()=>{panonesiaDispatch({proto:"panonesia/1",type:"trigger",action:li.dataset.action,id:li.dataset.target,href:li.dataset.href});}));})();</script>
+```
+
+---
+
+## 4) Sidebar Kanan — Dark
+```html
+<nav id="{{id}}" class="pmenu sidebar right dark" role="menu"><ul>{{items}}</ul></nav>
+<style>
+/* ambil style model 2 (dark), hanya ganti posisi */
+.pmenu.sidebar{position:fixed;top:16px;bottom:16px;width:64px;border-radius:16px;padding:10px;z-index:9998;backdrop-filter:blur(8px)}
+.pmenu.dark{background:rgb(15 17 23/.75);border:1px solid #1f2937;box-shadow:0 10px 30px rgb(0 0 0/.35);color:#e5e7eb}
+.pmenu.right{right:16px}
+.pmenu ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.pmenu li{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;cursor:pointer;background:rgb(255 255 255/.04);border:1px solid rgb(255 255 255/.06)}
+.pmenu li:hover{background:rgb(255 255 255/.08)}
+.pmenu li img{width:22px;height:22px;filter:invert(1) saturate(0) brightness(1.6)}
+</style>
+<script>(function(){const e=document.getElementById("{{id}}");if(!e)return;
+e.querySelectorAll("li[data-action]").forEach(li=>li.addEventListener("click",()=>{panonesiaDispatch({proto:"panonesia/1",type:"trigger",action:li.dataset.action,id:li.dataset.target,href:li.dataset.href});}));})();</script>
+```
+
+---
+
+## 5) Navbar Atas — Light
+```html
+<nav id="{{id}}" class="pmenu top light" role="menubar">
+  <ul>{{items}}</ul>
+</nav>
+<style>
+.pmenu.top{position:fixed;left:16px;right:16px;top:16px;height:56px;display:flex;align-items:center;border-radius:14px;padding:6px 10px;z-index:9998;
+  background:rgb(255 255 255/.85);border:1px solid #e5e7eb;backdrop-filter:blur(8px);box-shadow:0 10px 30px rgb(0 0 0/.08)}
+.pmenu.top ul{list-style:none;margin:0;padding:0;display:flex;gap:10px;align-items:center}
+.pmenu.top li{display:flex;gap:8px;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid #eef2f6;background:#fff;cursor:pointer}
+.pmenu.top li img{width:18px;height:18px;object-fit:contain}
+</style>
+<script>(function(){const e=document.getElementById("{{id}}");if(!e)return;
+e.querySelectorAll("li[data-action]").forEach(li=>li.addEventListener("click",()=>{panonesiaDispatch({proto:"panonesia/1",type:"trigger",action:li.dataset.action,id:li.dataset.target,href:li.dataset.href});}));})();</script>
+```
+
+---
+
+## 6) Navbar Atas — Dark
+```html
+<nav id="{{id}}" class="pmenu top dark" role="menubar"><ul>{{items}}</ul></nav>
+<style>
+.pmenu.top{position:fixed;left:16px;right:16px;top:16px;height:56px;display:flex;align-items:center;border-radius:14px;padding:6px 10px;z-index:9998;backdrop-filter:blur(8px)}
+.pmenu.dark{background:rgb(15 17 23/.75);border:1px solid #1f2937;box-shadow:0 10px 30px rgb(0 0 0/.35);color:#e5e7eb}
+.pmenu.top ul{list-style:none;margin:0;padding:0;display:flex;gap:10px;align-items:center}
+.pmenu.top li{display:flex;gap:8px;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid rgb(255 255 255/.08);background:rgb(255 255 255/.05);cursor:pointer}
+.pmenu.top li:hover{background:rgb(255 255 255/.1)}
+.pmenu.top li img{width:18px;height:18px;filter:invert(1) saturate(0) brightness(1.6)}
+</style>
+<script>(function(){const e=document.getElementById("{{id}}");if(!e)return;
+e.querySelectorAll("li[data-action]").forEach(li=>li.addEventListener("click",()=>{panonesiaDispatch({proto:"panonesia/1",type:"trigger",action:li.dataset.action,id:li.dataset.target,href:li.dataset.href});}));})();</script>
+```
+
+---
+
+## 7) Dock Bawah — Light
+```html
+<nav id="{{id}}" class="pmenu bottom light" role="toolbar" aria-label="Quick actions">
+  <ul>{{items}}</ul>
+</nav>
+<style>
+.pmenu.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;border-radius:16px;padding:8px 10px;z-index:9998;
+  background:rgb(255 255 255/.85);border:1px solid #e5e7eb;backdrop-filter:blur(8px);box-shadow:0 10px 30px rgb(0 0 0/.08)}
+.pmenu.bottom ul{list-style:none;margin:0;padding:0;display:flex;gap:10px}
+.pmenu.bottom li{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#fff;border:1px solid #eef2f6;cursor:pointer}
+.pmenu.bottom li img{width:22px;height:22px}
+</style>
+<script>(function(){const e=document.getElementById("{{id}}");if(!e)return;
+e.querySelectorAll("li[data-action]").forEach(li=>li.addEventListener("click",()=>{panonesiaDispatch({proto:"panonesia/1",type:"trigger",action:li.dataset.action,id:li.dataset.target,href:li.dataset.href});}));})();</script>
+```
+
+---
+
+## 8) Dock Bawah — Dark
+```html
+<nav id="{{id}}" class="pmenu bottom dark" role="toolbar" aria-label="Quick actions"><ul>{{items}}</ul></nav>
+<style>
+.pmenu.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;border-radius:16px;padding:8px 10px;z-index:9998;backdrop-filter:blur(8px)}
+.pmenu.dark{background:rgb(15 17 23/.75);border:1px solid #1f2937;box-shadow:0 10px 30px rgb(0 0 0/.35);color:#e5e7eb}
+.pmenu.bottom ul{list-style:none;margin:0;padding:0;display:flex;gap:10px}
+.pmenu.bottom li{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:rgb(255 255 255/.06);border:1px solid rgb(255 255 255/.08);cursor:pointer}
+.pmenu.bottom li:hover{background:rgb(255 255 255/.1)}
+.pmenu.bottom li img{width:22px;height:22px;filter:invert(1) saturate(0) brightness(1.6)}
+</style>
+<script>(function(){const e=document.getElementById("{{id}}");if(!e)return;
+e.querySelectorAll("li[data-action]").forEach(li=>li.addEventListener("click",()=>{panonesiaDispatch({proto:"panonesia/1",type:"trigger",action:li.dataset.action,id:li.dataset.target,href:li.dataset.href});}));})();</script>
+```
+
+---
+
+## 9) Cara Mengisi `{{items}}`
+Editor membangkitkan item seperti ini:
+```html
+<li data-action="show" data-target="p1--image--poster01" aria-label="Poster"><img src="/icons/poster.svg" alt=""><span class="sr-only">Poster</span></li>
+<li data-action="switch-scene" data-target="p2" aria-label="Kamar"><img src="/icons/room.svg" alt=""><span class="sr-only">Kamar</span></li>
+<li data-action="url" data-href="https://.../menu.pdf" aria-label="Brosur"><img src="/icons/pdf.svg" alt=""><span class="sr-only">Brosur</span></li>
+```
+
+---
+
+## 10) Schema Singkat (untuk Editor)
+```json
+{
+  "type": "menu",
+  "fields": [
+    { "key": "position", "type": "select", "options": ["left","right","top","bottom"], "default": "left" },
+    { "key": "theme", "type": "select", "options": ["light","dark"], "default": "light" },
+    {
+      "key": "items", "type": "array", "itemSchema": {
+        "fields": [
+          { "key": "label", "type": "text", "required": true },
+          { "key": "icon",  "type": "asset", "accept": [".svg",".png",".jpg",".webp"] },
+          { "key": "action", "type": "select", "options": ["show","hide","switch-scene","url","custom"], "required": true },
+          { "key": "target", "type": "text", "help": "popupId/sceneId/URL/custom payload" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Catatan
+- Semua menu **reusable**: tinggal tukar `position` + `theme` tanpa ubah logika.
+- Aksi memakai **trigger yang sama** dengan popup lain → **hybrid control** (klik UI atau via JS eksternal).
+- Tetap jaga **a11y**: `role`, `aria-label`, dan **Esc** untuk menutup jika menu bertipe modal.
