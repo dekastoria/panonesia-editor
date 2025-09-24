@@ -1,0 +1,201 @@
+# Alur Produk — Panonesia Editor (Popup-Only) 
+> **Dokumen singkat untuk AI/engineer**: implementasi editor popup + popup-menu, output 1 folder ZIP siap dipakai 3DVista. Fokus: **preview cepat**, **menu trigger**, **ID konsisten**.
+
+---
+
+## 0) Tujuan & Cakupan
+- Membangun **CMS popup** (image/text/pdf/youtube/custom) + **popup-menu** (posisi left/right/top/bottom).
+- Preview realtime (iframe + `postMessage`), tanpa 360/hotspot kompleks.
+- Export **satu folder**: `index.html` + `aset-custom/` (css, js, gambar, dokumen).  
+- Integrasi ke 3DVista via **snippet JS** per popup.
+
+---
+
+## 1) Alur Produk (End-to-End)
+1) **Create Project**  
+   - Field: `name`, `slug` (auto).  
+   - Tanya: **Aktifkan Popup-Menu global?** → Ya/Tidak (bisa di-skip & isi nanti).  
+   - Buat struktur storage:  
+     ```
+     /storage/projects/{slug}/assets/
+       ├─ gambar/
+       └─ dokumen/
+     ```
+
+2) **Scenes (Penamaan Saja)**  
+   - Hanya daftar **kode scene** (contoh: `s01`, `s02`, atau `lobby`, `kamar-a`).  
+   - Tidak perlu import panorama/thumbnail.
+
+3) **Scene Editor**  
+   - Tambah **Popups**: `image | text | pdf | youtube | custom`.  
+   - Live preview (iframe sandbox).  
+   - Asset: **Upload** saat edit atau **Browse** dari library proyek.
+
+4) **Popup-Menu (jika enabled)**  
+   - Dibuat di **Project level** (global) **atau** di Scene tertentu.  
+   - Mengandung **items** yang **mereferensikan popup** atau aksi lain.
+
+5) **Generate**  
+   - Bundel semua: `index.html`, `style.css`, `data.js`, `script.js`, dan semua aset → **ZIP**.  
+   - Otomatis buat **Dokumen “Trigger JS”** (daftar ID + snippet show/hide).
+
+---
+
+## 2) Dashboard — Popup-Menu (Tampilan & Alur)
+**Layout (dalam Scene Editor / Project):**
+- **Kiri (Builder/Menu Items)**  
+  - Header: **Position** (`left/right/top/bottom`) + **Theme** (`light/dark`).  
+  - **List items**: icon + label + **link target** (popup/URL/trigger) + status.  
+  - Aksi: **Drag reorder**, **Enable/Hide**, **Duplicate**, **Delete**.  
+  - **+ Add Item** → pilih **Action**:  
+    - `Show Popup` → pilih **Existing** atau **Create new** (mini-wizard tipe).  
+    - `Switch Scene` → pilih kode scene.  
+    - `Open URL` (termasuk PDF).  
+    - `Custom Trigger` (string bebas).
+
+- **Kanan Atas (Preview iframe)**  
+  - Menu muncul sesuai posisi; klik item → kirim trigger.
+
+- **Kanan Bawah (Tabs)**  
+  - **Properties (menu)**: position, theme, size (compact/comfortable), spacing, rounded, shadow, blur strength.  
+  - **Items**: array editor (label, icon, action, target, tooltip).  
+  - **Assets**: picker ikon & gambar.  
+  - **Code (opsional)**: custom CSS menu.
+
+### Mini-Wizard “Create new” per tipe
+- **Image Gallery**  
+  - Source: **Upload** atau **Pick from folder** (multi-select).  
+  - Opsi: layout `centered modal`, **backdrop dim/blur (sandblast)**, rounded, shadow.  
+  - Kontrol: **Prev/Next/Close**, **keyboard (← → Esc)**.  
+  - **Captions**: on/off (filename/EXIF/kustom).  
+  - **Player**: lightbox **vanilla JS** ±10–15KB (tanpa dependensi besar).
+- **Video Gallery (YouTube)**: IDs/URLs, autoplay, mute, controls → modal + backdrop.  
+- **PDF Viewer**: 1/multi PDF → buka di tab baru atau modal `<iframe>`; tombol **Download** opsional.  
+- **About/Services/Contact**: Title, Paragraph (rich), Cover (opsional), Button action.  
+- **Custom**: HTML/CSS/JS (Monaco), sandbox.
+
+> Wizard menghasilkan **popup baru** dan **menghubungkan** item menu ke `popupId` target.
+
+---
+
+## 3) Skema Data (Ringkas)
+**Project**
+```json
+{
+  "project": { "title": "Hotel A", "menu": { /* lihat di bawah */ } },
+  "scenes": [ /* array scene */ ]
+}
+```
+
+**Scene**
+```json
+{
+  "id": "s01",
+  "name": "Lobby",
+  "popups": [
+    {
+      "id": "pop-s01-img-001",
+      "type": "template",
+      "templateKey": "popup-image",
+      "props": { "title": "Poster", "img": "aset-custom/gambar/poster.webp", "position": "Center", "theme": "Light" }
+    },
+    {
+      "id": "pop-s01-gal-002",
+      "type": "template",
+      "templateKey": "popup-gallery",
+      "props": {
+        "images":[{"src":"aset-custom/gambar/a.webp","caption":"Lobby"}],
+        "backdrop":"blur","controls":true,"captions":true
+      }
+    }
+  ]
+}
+```
+
+**Popup-Menu**
+```json
+{
+  "enabled": true,
+  "position": "left|right|top|bottom",
+  "theme": "light|dark",
+  "items": [
+    { "label":"About",   "icon":"aset-custom/gambar/user.svg",  "action":"show", "target":"pop-s01-txt-001" },
+    { "label":"Gallery", "icon":"aset-custom/gambar/photo.svg", "action":"show", "target":"pop-s01-gal-002" },
+    { "label":"PDF",     "icon":"aset-custom/gambar/pdf.svg",   "action":"url",  "target":"aset-custom/dokumen/menu.pdf" }
+  ]
+}
+```
+
+---
+
+## 4) Naming ID (konsisten & mudah diketik)
+- **Format**: `pop-<scene>-<type>-<nnn>`  
+  - Scene: `s01`, `s02`, atau slug (`lobby`).  
+  - Type: `img|txt|pdf|yt|vid|gal|cus|menu`.  
+  - No urut: `001`, `002`, …  
+- Contoh: `pop-s02-txt-002`, `pop-lobby-gal-003`, `pop-global-menu-main`.
+
+---
+
+## 5) Trigger dari 3DVista (Execute JavaScript)
+**One-liner (SHOW)**
+```js
+(function(){var M={proto:"panonesia/1",type:"trigger",action:"show",id:"pop-s01-img-001"};try{window.postMessage(M,"*");window.parent&&window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}})();
+```
+**One-liner (HIDE)**
+```js
+(function(){var M={proto:"panonesia/1",type:"trigger",action:"hide",id:"pop-s01-img-001"};try{window.postMessage(M,"*");window.parent&&window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}})();
+```
+**Helper global (opsional, ditempel sekali)**
+```js
+window.POP = {
+  show:id=>{var M={proto:"panonesia/1",type:"trigger",action:"show",id};window.postMessage(M,"*");try{window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}},
+  hide:id=>{var M={proto:"panonesia/1",type:"trigger",action:"hide",id};window.postMessage(M,"*");try{window.parent.postMessage(M,"*");new BroadcastChannel("panonesia").postMessage(M);}catch(e){}}
+};
+// Contoh: POP.show("pop-s02-txt-002");
+```
+
+---
+
+## 6) Preview & Runtime
+- **Preview**: iframe `sandbox="allow-scripts allow-modals"`; komunikasi `postMessage` (`init`, `update`, `bulk`, `select`, `log`, `diagnostics`).  
+- **Runtime (export)**: `script.js` membaca `window.PANONESIA_CONFIG`, merender **menu** (jika enabled), dan **show/hide** popup on-demand.  
+- Player **Gallery**: lightbox vanilla (blur/dim backdrop, prev/next/close, keyboard).
+
+---
+
+## 7) Export (satu folder)
+```
+Proyek-Tur-Virtual/
+├─ index.html
+└─ aset-custom/
+   ├─ css/style.css
+   ├─ js/data.js        # window.PANONESIA_CONFIG = {...}
+   ├─ js/script.js      # runtime + listener + gallery
+   ├─ gambar/...
+   └─ dokumen/...
+```
+- `index.html` menyertakan CSP minimal:  
+  `default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src https://www.youtube.com https://player.vimeo.com;`
+- Sertakan **Dokumen “Trigger JS”** (Markdown/HTML) berisi daftar semua ID + snippet 1 baris.
+
+---
+
+## 8) Asset & DB (garis besar)
+- Upload **bulk** di awal **atau** per-popup; field memiliki **Upload** & **Browse**.  
+- Validasi ukuran/tipe; konversi WebP (opsional); **where-used**.  
+- Tabel minimal:  
+  - `projects { id, name, slug, config_json, size_bytes, deleted_at }`  
+  - `scenes { id, project_id, key, name, order, deleted_at }`  
+  - `popups { id, scene_id, id_key, type, mode, props_json, order, status, deleted_at }`  
+  - `media` (Spatie) untuk file.  
+- Soft-delete + **garbage collector** berkala (hapus orphan dan trash).
+
+---
+
+## 9) Kriteria Selesai (MVP)
+- Preview patch < 300 ms; device switcher.  
+- Popup-menu tampil & memicu popup.  
+- Gallery ringan (modal blur, prev/next/close, caption, keyboard).  
+- Export ZIP = parity dengan preview.  
+- “Trigger JS” lengkap & valid.
