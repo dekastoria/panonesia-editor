@@ -1,196 +1,878 @@
-Cetak Biru Pengembangan: CMS Tur Virtual Interaktif (Versi Final & Realistis)
-Dokumen ini adalah panduan arsitektur dan teknis lengkap untuk membangun Visual UI Builder bagi tur virtual. Dokumen ini telah diperkaya berdasarkan analisis mendalam untuk memastikan produk akhir yang kuat, aman, dan mudah dikembangkan.
+CMS Tur Virtual Interaktif — Cetak Biru MVP (Sederhana, Zero-Code)
+1) Tujuan
 
-1. Tujuan Proyek (Project Goal)
-Membangun aplikasi web (CMS) yang memungkinkan pengguna merancang, mengelola, dan men-generate modul UI interaktif secara visual. Output dari aplikasi ini adalah sebuah paket aset (.zip) yang dapat dengan mudah diintegrasikan ke dalam platform tur virtual pihak ketiga hanya dengan modifikasi minimal pada file index.html bawaan.
+Aplikasi web untuk membuat overlay interaktif (popup, sidebar, galeri, dll.) di atas background 360 secara visual (tanpa coding). Hasil akhirnya adalah paket .zip yang siap dipakai di platform tur virtual pihak ketiga—cukup tempel satu skrip/konfigurasi sederhana. 
+GitHub
 
-2. Arsitektur & Rekomendasi Stack
-2.1. Filosofi Arsitektur: Hibrida yang Disederhanakan
-Kita menggunakan pendekatan hibrida yang kuat, dengan fokus pada kecepatan dan kemudahan pengembangan.
+2) Arsitektur (ringkas & realistis)
 
-90% Pekerjaan Admin (CRUD Standar): Ditangani oleh Filament. Ini adalah cara tercepat untuk membangun manajemen proyek dan aset.
+Backend & Admin: Laravel 12 + Filament 4 → CRUD Project, Template, Asset, Versi. 
+GitHub
 
-10% Pekerjaan Inti (Live Editor): Ditangani oleh halaman React khusus dengan desain antarmuka yang terfokus dan sederhana.
+Manajemen Asset: Spatie Media Library (validasi tipe/ukuran; where-used). 
+GitHub
 
-2.2. Komponen Utama & Teknologi
-Komponen
+Editor Live (halaman khusus): React (Vite/Inertia) + Tailwind + shadcn/ui + Zustand (state).
 
-Teknologi yang Direkomendasikan
+Preview: <iframe sandbox> (background 360 + overlay).
 
-Fungsi Utama
+Komunikasi: window.postMessage (dua arah, spesifikasi di §5).
 
-Backend & Admin
+Ekspor ZIP: ZipStream (streaming, hemat memori). 
+GitHub
 
-Laravel 12 + Filament 4
+Database: projects, project_versions, templates, media. 
+GitHub
 
-Inti aplikasi, manajemen data, dan auto-generate halaman admin.
+3) UI/UX Editor (tanpa coding)
 
-Manajemen Aset
+Layout dua kolom (resizable):
 
-Spatie Media Library (Paket Laravel)
+Kiri (Builder & Shortcuts, 20–28%)
 
-Mengelola unggahan, penyimpanan, dan koleksi file (gambar, PDF, audio).
+Project bar (nama, status “Saved hh:mm”).
 
-Editor Live
+Component Tree: hierarki overlay (drag, duplicate, hide, delete).
 
-Halaman khusus React (Vite atau Inertia.js)
++ Tambah (wizard 3 langkah: Popup Gambar/Video/PDF/Teks).
 
-Membangun antarmuka editor visual dengan layout 2-panel yang sederhana.
+Search + badge error per item.
 
-State Management
+Kanan dibagi dua (vertikal):
 
-Zustand (Pustaka React)
+Atas: Live Preview (iframe 360)
 
-Mengelola state editor config_json secara efisien dan real-time.
+Toolbar: Device (Mobile 375 / Tablet 768 / Desktop), Zoom, Frame toggle, Refresh, Grid/Snap, indikator FPS kecil.
 
-UI Editor
+Two-way select: klik komponen di preview → fokus item & buka Properties.
 
-TailwindCSS + shadcn/ui (Komponen React)
+Bawah: Tabs
 
-Membangun antarmuka panel editor yang modern dan responsif.
+Properties (default; auto dari schema.json)
 
-Database
+AI (prompt → draft config → apply sebagian/semua)
 
-PostgreSQL atau MySQL
+Console (log/error dari preview)
 
-Menyimpan semua data konfigurasi proyek, template, dan aset.
+Assets (upload, optimasi, drag ke field)
 
-Ekspor ZIP
+Code (disembunyikan di Mode Guided; untuk pengguna mahir)
 
-ZipStream (maennche/zipstream-php)
+Kualitas hidup (penting): Autosave (debounce), Undo/Redo, Command Palette (⌘K), Empty-state dengan CTA “Tambah item pertama”.
 
-Men-generate file .zip secara on-the-fly.
+4) Template → Schema → Auto-Form (kunci no-code)
 
-Infrastruktur
+Setiap template punya paket:
 
-VPS (Virtual Private Server) + aaPanel
+templates/<templateKey>/
+  meta.json        // nama, versi
+  schema.json      // definisi form & validasi → editor auto-generate UI
+  template.html    // shell/slot overlay
+  template.css
+  template.js      // init/destroy hooks (opsional)
+  assets/...
 
-Hosting dan manajemen server.
 
-3. Desain Database & Skema Data
-projects: Menyimpan config_json utama dan template_id.
+Contoh ringkas schema.json:
 
-project_versions: Menyimpan histori config_json untuk rollback.
-
-templates: Menyimpan name, key unik, dan schema_json.
-
-media: Dikelola secara otomatis oleh Spatie Media Library.
-
-config_json (Contoh)
 {
-  "schemaVersion": "1.0",
-  "project": { "title": "Tur Virtual Kantor Pusat" },
-  "background360": { "type": "equirect", "src": "/media/panos/lobby.jpg", "yaw": 120, "fov": 75 },
-  "elements": [
-    { "id": "uuid-1", "type": "popup-image", "label": "Poster Acara", "src": "/media/images/poster.jpg" },
-    { "id": "uuid-2", "type": "sidebar", "label": "Menu Utama", "items": [
-      { "id": "uuid-3", "type": "link-to-popup", "label": "Lihat Poster", "targetId": "uuid-1" }
-    ]}
-  ],
+  "version": 1,
+  "sections": [
+    {
+      "title": "Background 360",
+      "fields": [
+        { "key":"background360.src", "label":"Gambar 360", "type":"asset",
+          "accept":[".jpg",".jpeg",".webp"], "required":true,
+          "help":"Equirectangular 2:1, min 4096×2048" },
+        { "key":"background360.yaw", "label":"Arah awal (°)", "type":"number",
+          "min":-180, "max":180, "step":1, "default":0 },
+        { "key":"background360.fov", "label":"Zoom awal (FOV)", "type":"number",
+          "min":30, "max":120, "step":1, "default":75 }
+      ]
+    },
+    {
+      "title": "Sidebar",
+      "fields": [
+        { "key":"sidebar.enabled", "label":"Aktifkan Sidebar", "type":"switch", "default":true },
+        { "key":"sidebar.items", "label":"Menu Items", "type":"array", "itemSchema": {
+          "fields": [
+            { "key":"id", "label":"ID", "type":"id", "autogen":"popup-" },
+            { "key":"type", "label":"Tipe", "type":"select",
+              "options":[
+                {"label":"Popup Gambar","value":"popup-image"},
+                {"label":"Popup Teks","value":"popup-text"},
+                {"label":"Popup Video (YouTube)","value":"popup-video"},
+                {"label":"Popup PDF","value":"popup-pdf"}
+              ],
+              "required":true
+            },
+            { "key":"label", "label":"Teks Tombol", "type":"text", "required":true },
+            { "key":"src", "label":"Sumber (img/pdf/YouTube ID)", "type":"smart",
+              "required":true, "help":"Link gambar/PDF atau ID YouTube" }
+          ]
+        } }
+      ]
+    },
+    {
+      "title": "Kustom (Opsional)",
+      "fields": [
+        { "key":"customCode.html", "label":"HTML", "type":"code", "language":"html" },
+        { "key":"customCode.css",  "label":"CSS",  "type":"code", "language":"css"  },
+        { "key":"customCode.js",   "label":"JS",   "type":"code", "language":"javascript" }
+      ]
+    }
+  ]
+}
+
+
+Editor membaca schema.json → membangun form otomatis + validasi. User pemula tinggal isi—tanpa menyentuh kode.
+
+5) Protokol postMessage (Editor ⇄ Preview)
+
+Semua pesan menyertakan { proto:"panonesia/1", requestId? }.
+
+Editor → Preview
+
+init { schemaVersion, templateKey, config } — bootstrap pertama.
+
+update { path, value } — patch granular (contoh: sidebar.items[2].label).
+
+bulk { patches:[{path,value},…] } — kumpulan patch (kirim setelah debounce 150–300ms).
+
+inspect { nodeId } — minta highlight komponen di canvas.
+
+refresh { reason?:"user"|"asset" } — muat ulang runtime.
+
+Preview → Editor
+
+ready { runtime:"panonesia@x.y.z" } — siap terima pesan.
+
+select { nodeId } — klik di preview → fokus di panel kiri.
+
+log { level:"info"|"warn"|"error", args:any[] } — console bridge.
+
+diagnostics { items:[{code,level,message,nodeId?}], ts } — masalah terdeteksi (asset 404, id ganda, FOV di-clamp, dll).
+
+Catatan performa: jangan kirim full config tiap ketik. Pakai update/bulk agar preview tetap “instan”. 
+GitHub
+
+6) Preview Runtime (iframe) & Viewer 360
+
+<iframe sandbox="allow-scripts allow-modals"> (tanpa allow-same-origin untuk keamanan).
+
+Viewer 360 (disarankan): Pannellum. Kunci parameter default:
+
+src (equirectangular 2:1), yaw −180..180 (default 0), fov 30..120 (default 75),
+
+autoRotate opsional, hotspots[] (skema minimal).
+
+Render overlay: registry komponen dengan key stabil (id); pada update/bulk cukup patch node terkait (hindari wipe total DOM).
+
+Sanitasi HTML custom dengan DOMPurify sebelum mount.
+
+7) Diagnostics (guardrail user pemula)
+
+Berjalan terus; tampilkan badge merah bila ada error.
+
+E001 Asset tidak ditemukan / 404
+
+E002 ID ganda atau targetId tidak ada
+
+E003 Format file tidak didukung
+
+E004 Gambar terlalu besar (>8MB) → sarankan kompres / convert WebP
+
+E005 YouTube ID tidak valid
+
+W101 FOV out-of-range (auto-clamp)
+
+W102 Kontras tombol sidebar rendah (cek a11y)
+Klik item → fokus field terkait di Properties.
+
+8) Panel AI Assist (no-code beneran)
+
+Wizard Prompt: “Buat 3 menu: Poster (img), Info (teks), Brosur (PDF). Tema oranye.”
+
+Pratinjau: AI menghasilkan draft config sesuai schema.json.
+
+Apply: terapkan sebagian/semua → kirim bulk ke preview.
+
+Per-field: tombol Rephrase/Translate (opsional).
+
+9) Asset Manager (ramah pemula)
+
+Drag & drop, validasi tipe/ukuran, deteksi equirect 2:1 untuk panorama.
+
+Optimize on upload (opsional): resize/convert WebP.
+
+“Where-used” (lihat dipakai di node mana).
+
+Rename aman → otomatis update path di config.
+
+10) Ekspor yang aman & mudah dicek
+
+Struktur ZIP:
+
+/index.html
+/styles.css
+/overlay.js
+/assets/...
+/help/quick-start.pdf
+/export-preview.html   ← cek lokal sebelum dipakai
+/README-export.md
+
+
+CSP default (di index.html):
+
+default-src 'self';
+img-src 'self' data: https:;
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+frame-src https://www.youtube.com https://player.vimeo.com;
+
+
+Opsi “Relax CSP” bila user butuh script eksternal tambahan.
+
+Export Preview: tombol “Cek hasil export” membuka export-preview.html agar hasil parity dengan editor sebelum dipindah ke platform tur.
+
+11) Acceptance Criteria (MVP bisa dipakai non-coder)
+
+Preview respons < 300ms saat edit field umum.
+
+Two-way selection bekerja (klik di preview → fokus di Properties).
+
+AI wizard bisa membuat draft 3 item dari 1 prompt.
+
+Diagnostics menandai asset hilang & bisa diklik untuk memperbaiki.
+
+Export ZIP → export-preview.html identik dengan preview editor.
+
+Autosave + Undo/Redo berjalan; ada indikator status “Saved”.
+
+12) Roadmap Fase (realistis)
+
+Fase 1 — Fondasi: Laravel+Filament (Projects, Assets, Templates), auth, storage. 
+GitHub
+
+Fase 2 — Editor: Halaman React, schema-driven form, postMessage (init/update/bulk/select/log), preview 360, autosave. 
+GitHub
+
+Fase 3 — Ekspor: Export ZIP + export-preview.html, CSP default, rewriting path asset. 
+GitHub
+
+Fase 4 — Lanjutan: Versions timeline, template gallery, diagnostics lengkap, AI panel, hotspot lanjutan. 
+GitHub
+
+13) Contoh minimal config_json (hasil akhir)
+{
+  "project": { "title": "Tur A" },
+  "background360": { "src": "/media/panos/lobby.jpg", "yaw": 0, "fov": 75 },
+  "sidebar": {
+    "enabled": true,
+    "items": [
+      { "id": "popup-1", "type": "popup-image", "label": "Poster", "src": "/media/images/poster.jpg" },
+      { "id": "popup-2", "type": "popup-text",  "label": "Info",   "src": "<h3>Selamat datang</h3><p>…</p>" },
+      { "id": "popup-3", "type": "popup-pdf",   "label": "Menu",   "src": "/docs/menu.pdf" },
+      { "id": "popup-4", "type": "popup-video", "label": "Teaser", "src": "dQw4w9WgXcQ" }
+    ]
+  },
   "customCode": { "html": "", "css": "", "js": "" }
 }
 
-4. Alur Kerja Inti & Desain Editor
-4.1. Arsitektur Editor Live Preview (Disederhanakan)
-Fokus utama adalah pada alur kerja pilih → isi → lihat.
+Catatan akhir
 
-Panel Kiri (Kontrol & Editor): Sidebar untuk memilih modul (Pop-up, Sidebar, dll.) dan area utama untuk menampilkan form isian yang relevan.
+Dokumen ini menggantikan versi sebelumnya dan telah diringkas agar tanpa konflik serta ramah pengguna zero-code.
 
-Panel Kanan (Preview): Sebuah <iframe> yang di-sandbox (sandbox="allow-scripts allow-modals") dengan toolbar untuk switch device.
+Bagian teknis yang sengaja “digembok” (mis. pemilihan viewer 360, CSP default, patching) dibuat supaya hasil preview = hasil export dan pemakaian harian terasa ringan.
 
-Protokol Komunikasi (postMessage):
+Untuk implementasi, bekukan schema.json & protokol postMessage lebih dulu agar semua pihak (atau AI) bekerja di spesifikasi yang sama.
 
-Editor → Preview: Mengirim pesan { type: "UPDATE", payload: { newConfig: {...} } } setiap kali ada perubahan (dengan debounce 300ms).
+You said:
+buatkan versi markdown .md yang siap di copy ke github dan pastikan formatnya bisa di preview di github
+ChatGPT said:
+# Panonesia Editor — Cetak Biru MVP (Zero-Code, Siap Produksi)
 
-Preview → Editor: Mengirim pesan { type: "SELECT", payload: { elementId: "..." } } saat elemen di preview diklik.
+> **Tujuan:** Aplikasi web untuk membuat **overlay interaktif** (popup, sidebar, galeri, dll.) di atas **background 360** secara **visual tanpa coding**. Hasil akhirnya adalah **paket `.zip`** yang siap dipakai di platform tur virtual pihak ketiga.
 
-4.2. Sistem Template Berbasis Skema
-Setiap template UI akan memiliki schema.json yang mendefinisikan form-nya. Editor React akan membaca skema ini untuk membangun form secara dinamis. Ini adalah kunci untuk skalabilitas.
+---
 
-5. Rencana Pengembangan MVP (Dengan Kriteria Jelas)
-Fase 1: Fondasi Backend
-Tujuan: Menyiapkan struktur dasar aplikasi.
+## 1) Arsitektur Ringkas
 
-Kriteria Selesai:
+- **Backend & Admin:** Laravel 12 + Filament 4 → CRUD Project, Template, Asset, Versi.
+- **Manajemen Asset:** Spatie Media Library (validasi tipe/ukuran; where-used).
+- **Editor Live (halaman khusus):** React (Vite/Inertia) + Tailwind + shadcn/ui + Zustand (state).
+- **Preview:** `<iframe sandbox>` (background 360 + overlay).
+- **Komunikasi Editor ↔ Preview:** `window.postMessage` (dua arah; spesifikasi di §5).
+- **Ekspor ZIP:** ZipStream (streaming—hemat memori).
+- **Database minimal:** `projects`, `project_versions`, `templates`, `media`.
 
-Proyek Laravel dan Filament berhasil diinstal.
+---
 
-CRUD untuk Projects (dengan kolom config_json) berfungsi.
+## 2) UI/UX Editor (Tanpa Coding)
 
-Spatie Media Library terintegrasi dan bisa meng-upload file.
+**Layout dua kolom (resizable & disimpan di localStorage):**
 
-Fase 2: Inti Editor & Live Preview
-Tujuan: Membangun jantung aplikasi, yaitu editor visual.
+- **Kiri (20–28%) — Builder & Shortcuts**
+  - Project bar (nama, status “Saved hh:mm”).
+  - **Component Tree**: hierarki overlay (drag, duplicate, hide, delete) + **badge error** per item.
+  - **+ Tambah** (wizard 3 langkah: Popup Gambar / Video / PDF / Teks).
+  - Pencarian item.
 
-Kriteria Selesai:
+- **Kanan — Split vertikal**
+  - **Atas: Live Preview** (iframe 360)
+    - Toolbar: Device (Mobile 375 / Tablet 768 / Desktop), Zoom, Frame toggle, Grid/Snap, Refresh, perf mini (FPS).
+    - **Two-way select:** klik elemen di preview → fokus item & buka **Properties** di bawah.
+  - **Bawah: Tabs**
+    - **Properties** (default; auto dari `schema.json`)
+    - **AI** (prompt → draft config → apply sebagian/semua)
+    - **Console** (log/error dari preview)
+    - **Assets** (upload, optimasi, drag ke field)
+    - **Code** (disembunyikan di Mode Guided; untuk pengguna mahir)
 
-Halaman editor React dapat memuat config_json dari backend.
+**Kualitas hidup (wajib):** Autosave (debounce 150–300 ms), Undo/Redo, Command Palette (⌘K), Empty-state dengan CTA “Tambah item pertama”.
 
-Panel Kiri (Editor) dan Panel Kanan (<iframe> Preview) berhasil ditampilkan.
+---
 
-Komunikasi postMessage (Editor → Preview) berjalan dengan debounce.
+## 3) Template → Schema → Auto-Form (Kunci No-Code)
 
-Viewer 360 (Pannellum) berhasil tampil sebagai background di <iframe>.
+**Struktur paket template:**
 
-Fitur Auto-save config_json berfungsi.
 
-Fase 3: Fitur Lengkap Pertama & Ekspor
-Tujuan: Mengimplementasikan satu alur penuh dari pembuatan hingga ekspor.
+templates/<templateKey>/
+meta.json // nama, versi
+schema.json // definisi form & validasi → editor auto-generate UI
+template.html // shell/slot overlay
+template.css
+template.js // init/destroy hooks (opsional)
+assets/...
 
-Kriteria Selesai:
 
-Modul Image Popup berfungsi penuh (tambah, edit, hapus).
+**Contoh `schema.json` (ringkas):**
+```json
+{
+  "version": 1,
+  "sections": [
+    {
+      "title": "Background 360",
+      "fields": [
+        {
+          "key": "background360.src",
+          "label": "Gambar 360",
+          "type": "asset",
+          "accept": [".jpg", ".jpeg", ".webp"],
+          "required": true,
+          "help": "Equirectangular 2:1, min 4096×2048"
+        },
+        { "key": "background360.yaw", "label": "Arah awal (°)", "type": "number", "min": -180, "max": 180, "step": 1, "default": 0 },
+        { "key": "background360.fov", "label": "Zoom awal (FOV)", "type": "number", "min": 30, "max": 120, "step": 1, "default": 75 }
+      ]
+    },
+    {
+      "title": "Sidebar",
+      "fields": [
+        { "key": "sidebar.enabled", "label": "Aktifkan Sidebar", "type": "switch", "default": true },
+        {
+          "key": "sidebar.items",
+          "label": "Menu Items",
+          "type": "array",
+          "itemSchema": {
+            "fields": [
+              { "key": "id", "label": "ID", "type": "id", "autogen": "popup-" },
+              {
+                "key": "type",
+                "label": "Tipe",
+                "type": "select",
+                "options": [
+                  { "label": "Popup Gambar", "value": "popup-image" },
+                  { "label": "Popup Teks", "value": "popup-text" },
+                  { "label": "Popup Video (YouTube)", "value": "popup-video" },
+                  { "label": "Popup PDF", "value": "popup-pdf" }
+                ],
+                "required": true
+              },
+              { "key": "label", "label": "Teks Tombol", "type": "text", "required": true },
+              { "key": "src", "label": "Sumber (img/pdf/YouTube ID)", "type": "smart", "required": true, "help": "Link gambar/PDF atau ID YouTube" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Kustom (Opsional)",
+      "fields": [
+        { "key": "customCode.html", "label": "HTML", "type": "code", "language": "html" },
+        { "key": "customCode.css",  "label": "CSS",  "type": "code", "language": "css" },
+        { "key": "customCode.js",   "label": "JS",   "type": "code", "language": "javascript" }
+      ]
+    }
+  ]
+}
 
-Two-way selection (Preview → Editor) untuk Image Popup berjalan.
+4) Format config_json (Output Editor)
+{
+  "project": { "title": "Tur A" },
+  "background360": { "src": "/media/panos/lobby.jpg", "yaw": 0, "fov": 75 },
+  "sidebar": {
+    "enabled": true,
+    "items": [
+      { "id": "popup-1", "type": "popup-image", "label": "Poster", "src": "/media/images/poster.jpg" },
+      { "id": "popup-2", "type": "popup-text",  "label": "Info",   "src": "<h3>Selamat datang</h3><p>…</p>" },
+      { "id": "popup-3", "type": "popup-pdf",   "label": "Menu",   "src": "/docs/menu.pdf" },
+      { "id": "popup-4", "type": "popup-video", "label": "Teaser", "src": "dQw4w9WgXcQ" }
+    ]
+  },
+  "customCode": { "html": "", "css": "", "js": "" }
+}
 
-Fungsi Ekspor ke ZIP menghasilkan folder aset-custom yang fungsional.
+5) Protokol postMessage (Editor ⇄ Preview)
 
-Terdapat tombol "Export Preview" untuk verifikasi sebelum download.
+Semua pesan menyertakan { proto: "panonesia/1", requestId? }.
 
-Fase 4: Pengembangan Lanjutan
-Tujuan: Memperkaya aplikasi dengan lebih banyak fitur.
+Editor → Preview
+type	Payload (ringkas)	Fungsi
+init	{ schemaVersion, templateKey, config }	Bootstrap pertama
+update	{ path, value }	Patch granular satu field
+bulk	{ patches: [{path, value}, …] }	Banyak patch sekaligus (debounce 150–300 ms)
+inspect	{ nodeId }	Minta highlight komponen di canvas
+refresh	{ reason?: "user" | "asset" }	Hard reload runtime
+Preview → Editor
+type	Payload (ringkas)	Fungsi
+ready	{ runtime: "panonesia@x.y.z" }	Runtime siap terima pesan
+select	{ nodeId }	Klik di preview → fokus item di editor
+log	{ level: "info" | "warn" | "error", args: any[] }	Console bridge
+diagnostics	{ items: [{code, level, message, nodeId?}], ts }	Laporan masalah (asset 404, id ganda, dll.)
 
-Kriteria Selesai:
+Catatan performa: Gunakan update/bulk (patch) — hindari kirim full config setiap ketik untuk menjaga respons < 300 ms.
 
-Minimal 3 modul UI baru ditambahkan (misal: Sidebar, PDF Viewer).
+6) Preview Runtime (iframe) & Viewer 360
 
-Sistem Template berbasis schema.json diimplementasikan.
+<iframe sandbox="allow-scripts allow-modals"> (tanpa allow-same-origin demi keamanan).
 
-Fitur Versioning (project_versions) dapat menyimpan dan me-restore konfigurasi.
+Viewer 360 (disarankan): Pannellum dengan parameter default:
 
-6. Integrasi & Metode Trigger
-6.1. Struktur Folder Output
-Proyek-Tur-Virtual/
-├── index.html
-└── aset-custom/
-    ├── css/
-    │   └── style.css
-    ├── js/
-    │   ├── data.js
-    │   └── script.js
-    ├── gambar/
-    │   └── (file gambar)
-    └── dokumen/
-        └── (file pdf)
+src (equirectangular 2:1), yaw −180..180 (default 0), fov 30..120 (default 75),
 
-6.2. Kode Injeksi Manual
-Pengguna akan menambahkan kode berikut ke index.html bawaan mereka.
+autoRotate (opsional), hotspots[] (skema minimal).
 
-Di dalam <head>:
+Renderer overlay: registry komponen dengan key stabil (id); pada update/bulk cukup patch node terkait (hindari wipe total DOM).
 
-<link rel="stylesheet" href="./aset-custom/css/style.css">
+Sanitasi HTML custom dengan DOMPurify sebelum mount.
 
-Tepat sebelum </body>:
+7) Diagnostics (Guardrail untuk Pemula)
 
-<script src="./aset-custom/js/data.js" defer></script>
-<script src="./aset-custom/js/script.js" defer></script>
+Jalankan terus di background; tampilkan badge merah bila ada error.
 
-6.3. Mekanisme Trigger
-Fungsi di script.js akan dipanggil melalui fitur "Execute JavaScript" pada hotspot di dalam editor tur virtual bawaan. Contoh:
+E001 Asset tidak ditemukan / 404
 
-showPopup('uuid-1');
+E002 ID ganda atau targetId tidak ada
 
-7. Keamanan (Wajib)
-Sanitasi Input: Gunakan DOMPurify pada semua input HTML dari pengguna sebelum disimpan ke database.
+E003 Format file tidak didukung
 
-Content Security Policy (CSP): Hasil ekspor index.html harus menyertakan meta tag CSP untuk membatasi eksekusi script dan pemuatan sumber daya eksternal.
+E004 Gambar terlalu besar (> 8 MB) → sarankan kompres / convert WebP
+
+E005 YouTube ID tidak valid
+
+W101 FOV out-of-range (auto-clamp)
+
+W102 Kontras tombol sidebar rendah (cek a11y)
+
+Klik item → fokus field terkait di Properties.
+
+8) Panel AI Assist (No-Code Sungguhan)
+
+Wizard Prompt: contoh “Buat 3 menu: Poster (img), Info (teks), Brosur (PDF). Tema oranye.”
+
+Pratinjau: AI menghasilkan draft config sesuai schema.json.
+
+Apply: terapkan sebagian/semua → kirim bulk ke preview.
+
+Per-field: Rephrase / Translate (opsional).
+
+9) Asset Manager (Ramah Pemula)
+
+Drag & drop, validasi tipe/ukuran, deteksi equirect 2:1 untuk panorama.
+
+Optimize on upload (opsional): resize/convert WebP.
+
+“Where-used” (lihat asset dipakai di node mana).
+
+Rename aman → otomatis update path di config.
+
+10) Ekspor ZIP yang Aman & Mudah Dicek
+
+Struktur ZIP:
+
+/index.html
+/styles.css
+/overlay.js
+/assets/...
+/help/quick-start.pdf
+/export-preview.html   ← cek lokal sebelum dipakai
+/README-export.md
+
+
+CSP default (ditaruh di <head> index.html):
+
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  img-src 'self' data: https:;
+  script-src 'self';
+  style-src
+
+You said:
+jadikan full guide ini jadi satu halaman yang siap untuk di copas , semua total jadi satu tinggal copas, jangan pisah2 gini
+ChatGPT said:
+Thought for 6s
+Panonesia Editor — Full Guide (Zero-Code, Single Page)
+
+Tujuan: Aplikasi web untuk membuat overlay interaktif (popup, sidebar, galeri, dll.) di atas background 360 secara visual tanpa coding. Hasil akhir berupa paket .zip yang siap dipakai di platform tur virtual pihak ketiga.
+
+Daftar Isi
+
+Arsitektur Ringkas
+
+UI/UX Editor (Tanpa Coding)
+
+Template → Schema → Auto-Form
+
+Format config_json (Output Editor)
+
+Protokol postMessage (Editor ⇄ Preview)
+
+Preview Runtime (iframe) & Viewer 360
+
+Diagnostics (Guardrail Pemula)
+
+Panel AI Assist (No-Code Sungguhan)
+
+Asset Manager (Ramah Pemula)
+
+Ekspor ZIP (Aman & Mudah Dicek)
+
+Acceptance Criteria (MVP)
+
+Roadmap Fase
+
+Lampiran: Contoh Berkas & Snippet
+
+Arsitektur Ringkas
+
+Backend & Admin: Laravel 12 + Filament 4 → CRUD Project, Template, Asset, Versi.
+
+Manajemen Asset: Spatie Media Library (validasi tipe/ukuran; where-used).
+
+Editor Live (halaman khusus): React (Vite/Inertia) + Tailwind + shadcn/ui + Zustand (state).
+
+Preview: <iframe sandbox> (background 360 + overlay).
+
+Komunikasi Editor ↔ Preview: window.postMessage dua arah (spesifikasi di §5).
+
+Ekspor ZIP: ZipStream (streaming—hemat memori).
+
+Database minimal: projects, project_versions, templates, media.
+
+UI/UX Editor (Tanpa Coding)
+
+Layout dua kolom (resizable & disimpan di localStorage):
+
+Kiri (20–28%) — Builder & Shortcuts
+
+Project bar (nama, status “Saved hh:mm”).
+
+Component Tree: hierarki overlay (drag, duplicate, hide, delete) + badge error per item.
+
++ Tambah (wizard 3 langkah: Popup Gambar / Video / PDF / Teks).
+
+Pencarian item.
+
+Kanan — Split vertikal
+
+Atas: Live Preview (iframe 360)
+
+Toolbar: Device (Mobile 375 / Tablet 768 / Desktop), Zoom, Frame toggle, Grid/Snap, Refresh, perf mini (FPS).
+
+Two-way select: klik elemen di preview → fokus item & buka Properties di bawah.
+
+Bawah: Tabs
+
+Properties (default; auto dari schema.json)
+
+AI (prompt → draft config → apply sebagian/semua)
+
+Console (log/error dari preview)
+
+Assets (upload, optimasi, drag ke field)
+
+Code (disembunyikan di Mode Guided; untuk pengguna mahir)
+
+Kualitas hidup (wajib): Autosave (debounce 150–300 ms), Undo/Redo, Command Palette (⌘K), Empty-state dengan CTA “Tambah item pertama”.
+
+Template → Schema → Auto-Form
+
+Struktur paket template:
+
+templates/<templateKey>/
+  meta.json        // nama, versi
+  schema.json      // definisi form & validasi → editor auto-generate UI
+  template.html    // shell/slot overlay
+  template.css
+  template.js      // init/destroy hooks (opsional)
+  assets/...
+
+
+Contoh schema.json (ringkas):
+
+{
+  "version": 1,
+  "sections": [
+    {
+      "title": "Background 360",
+      "fields": [
+        {
+          "key": "background360.src",
+          "label": "Gambar 360",
+          "type": "asset",
+          "accept": [".jpg", ".jpeg", ".webp"],
+          "required": true,
+          "help": "Equirectangular 2:1, min 4096×2048"
+        },
+        { "key": "background360.yaw", "label": "Arah awal (°)", "type": "number", "min": -180, "max": 180, "step": 1, "default": 0 },
+        { "key": "background360.fov", "label": "Zoom awal (FOV)", "type": "number", "min": 30, "max": 120, "step": 1, "default": 75 }
+      ]
+    },
+    {
+      "title": "Sidebar",
+      "fields": [
+        { "key": "sidebar.enabled", "label": "Aktifkan Sidebar", "type": "switch", "default": true },
+        {
+          "key": "sidebar.items",
+          "label": "Menu Items",
+          "type": "array",
+          "itemSchema": {
+            "fields": [
+              { "key": "id", "label": "ID", "type": "id", "autogen": "popup-" },
+              {
+                "key": "type",
+                "label": "Tipe",
+                "type": "select",
+                "options": [
+                  { "label": "Popup Gambar", "value": "popup-image" },
+                  { "label": "Popup Teks", "value": "popup-text" },
+                  { "label": "Popup Video (YouTube)", "value": "popup-video" },
+                  { "label": "Popup PDF", "value": "popup-pdf" }
+                ],
+                "required": true
+              },
+              { "key": "label", "label": "Teks Tombol", "type": "text", "required": true },
+              {
+                "key": "src",
+                "label": "Sumber (img/pdf/YouTube ID)",
+                "type": "smart",
+                "required": true,
+                "help": "Link gambar/PDF atau ID YouTube"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Kustom (Opsional)",
+      "fields": [
+        { "key": "customCode.html", "label": "HTML", "type": "code", "language": "html" },
+        { "key": "customCode.css",  "label": "CSS",  "type": "code", "language": "css" },
+        { "key": "customCode.js",   "label": "JS",   "type": "code", "language": "javascript" }
+      ]
+    }
+  ]
+}
+
+Format config_json (Output Editor)
+{
+  "project": { "title": "Tur A" },
+  "background360": { "src": "/media/panos/lobby.jpg", "yaw": 0, "fov": 75 },
+  "sidebar": {
+    "enabled": true,
+    "items": [
+      { "id": "popup-1", "type": "popup-image", "label": "Poster", "src": "/media/images/poster.jpg" },
+      { "id": "popup-2", "type": "popup-text",  "label": "Info",   "src": "<h3>Selamat datang</h3><p>…</p>" },
+      { "id": "popup-3", "type": "popup-pdf",   "label": "Menu",   "src": "/docs/menu.pdf" },
+      { "id": "popup-4", "type": "popup-video", "label": "Teaser", "src": "dQw4w9WgXcQ" }
+    ]
+  },
+  "customCode": { "html": "", "css": "", "js": "" }
+}
+
+Protokol postMessage (Editor ⇄ Preview)
+
+Semua pesan menyertakan { proto: "panonesia/1", requestId? }.
+Gunakan patch (update/bulk) — hindari kirim full config tiap ketik untuk jaga respons < 300 ms.
+
+Editor → Preview
+type	Payload (ringkas)	Fungsi
+init	{ schemaVersion, templateKey, config }	Bootstrap pertama
+update	{ path, value }	Patch granular satu field
+bulk	{ patches: [{path, value}, …] }	Banyak patch sekaligus (debounce 150–300 ms)
+inspect	{ nodeId }	Minta highlight komponen di canvas
+refresh	{ reason?: "user" | "asset" }	Hard reload runtime
+
+Contoh path: sidebar.items[2].label
+
+Preview → Editor
+type	Payload (ringkas)	Fungsi
+ready	{ runtime: "panonesia@x.y.z" }	Runtime siap terima pesan
+select	{ nodeId }	Klik di preview → fokus item di editor
+log	{ level: "info" | "warn" | "error", args: any[] }	Console bridge
+diagnostics	{ items: [{code, level, message, nodeId?}], ts }	Laporan masalah (asset 404, id ganda, dll.)
+Preview Runtime (iframe) & Viewer 360
+
+<iframe sandbox="allow-scripts allow-modals"> (tanpa allow-same-origin demi keamanan).
+
+Viewer 360 (disarankan): Pannellum dengan parameter default:
+
+src (equirectangular 2:1), yaw −180..180 (default 0), fov 30..120 (default 75),
+
+autoRotate (opsional), hotspots[] (skema minimal).
+
+Renderer overlay: registry komponen dengan key stabil (id); pada update/bulk cukup patch node terkait (hindari wipe total DOM).
+
+Sanitasi HTML custom dengan DOMPurify sebelum mount.
+
+Diagnostics (Guardrail Pemula)
+
+Berjalan terus; tampilkan badge merah bila ada error.
+Klik item → fokus field terkait di Properties.
+
+E001 Asset tidak ditemukan / 404
+
+E002 ID ganda atau targetId tidak ada
+
+E003 Format file tidak didukung
+
+E004 Gambar terlalu besar (> 8 MB) → sarankan kompres / convert WebP
+
+E005 YouTube ID tidak valid
+
+W101 FOV out-of-range (auto-clamp)
+
+W102 Kontras tombol sidebar rendah (cek a11y)
+
+Panel AI Assist (No-Code Sungguhan)
+
+Wizard Prompt: contoh “Buat 3 menu: Poster (img), Info (teks), Brosur (PDF). Tema oranye.”
+
+Pratinjau: AI menghasilkan draft config sesuai schema.json.
+
+Apply: terapkan sebagian/semua → kirim bulk ke preview.
+
+Per-field: Rephrase / Translate (opsional).
+
+Asset Manager (Ramah Pemula)
+
+Drag & drop, validasi tipe/ukuran, deteksi equirect 2:1 untuk panorama.
+
+Optimize on upload (opsional): resize/convert WebP.
+
+“Where-used” (lihat asset dipakai di node mana).
+
+Rename aman → otomatis update path di config.
+
+Ekspor ZIP (Aman & Mudah Dicek)
+
+Struktur ZIP:
+
+/index.html
+/styles.css
+/overlay.js
+/assets/...
+/help/quick-start.pdf
+/export-preview.html   ← cek lokal sebelum dipakai
+/README-export.md
+
+
+CSP default (letakkan di <head> index.html):
+
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  img-src 'self' data: https:;
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  frame-src https://www.youtube.com https://player.vimeo.com;
+">
+
+
+Export Preview: tombol “Cek hasil export” membuka export-preview.html agar hasil parity dengan editor sebelum dipindah ke platform tur.
+
+Acceptance Criteria (MVP)
+
+Preview respons < 300 ms saat edit field umum.
+
+Two-way selection bekerja (klik di preview → fokus di Properties).
+
+AI wizard dapat membuat draft ≥ 3 item dari 1 prompt.
+
+Diagnostics menandai asset hilang & bisa diklik untuk memperbaiki.
+
+Export ZIP → export-preview.html identik dengan preview editor.
+
+Autosave + Undo/Redo berjalan; indikator status “Saved”.
+
+Roadmap Fase
+
+Fase 1 — Fondasi: Laravel + Filament (Projects, Assets, Templates), auth, storage.
+
+Fase 2 — Editor: Halaman React, schema-driven form, postMessage (init/update/bulk/select/log), preview 360, autosave.
+
+Fase 3 — Ekspor: Export ZIP + export-preview.html, CSP default, rewriting path asset.
+
+Fase 4 — Lanjutan: Versions timeline, template gallery, diagnostics lengkap, AI panel, hotspot lanjutan.
+
+Lampiran: Contoh Berkas & Snippet
+
+A. Struktur paket template (contoh)
+
+templates/radiant/
+  meta.json
+  schema.json
+  template.html
+  template.css
+  template.js
+  assets/
+
+
+B. meta.json (contoh)
+
+{
+  "name": "Radiant",
+  "key": "radiant",
+  "version": "1.0.0",
+  "minRuntime": "panonesia@1.0.0"
+}
+
+
+C. schema.json (salin dari contoh di §Template → Schema → Auto-Form)
+
+D. config_json (salin dari contoh di §Format config_json)
+
+E. Pesan postMessage (ringkas)
+
+{
+  "proto": "panonesia/1",
+  "type": "update",
+  "path": "sidebar.items[2].label",
+  "value": "Poster Baru"
+}
+
+
+F. Pedoman performa
+
+Debounce kirim patch 150–300 ms.
+
+Hindari render ulang penuh; gunakan patch keyed nodes.
+
+Lazy-load PDF/video; kompres gambar.
+
+Virtualize list jika item > 100.
+
+Dokumen satu halaman ini menggantikan versi sebelumnya.
+Fokus: no-code, schema-driven, postMessage dua arah, preview cepat, diagnostics, AI assist, dan export ber-CSP dengan parity ke editor.
