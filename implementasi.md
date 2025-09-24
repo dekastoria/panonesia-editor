@@ -17,6 +17,7 @@ Pertama, buka folder hasil *export* tur 3DVista Anda. Buat beberapa folder dan f
 
 Struktur akhir folder Anda akan terlihat seperti ini:
 
+```css
 Proyek-Tur-Virtual/
 ├── index.html
 └── aset-custom/
@@ -29,6 +30,7 @@ Proyek-Tur-Virtual/
     │   └── logo.png
     └── dokumen/
         └── brosur.pdf
+```
 
 ## Langkah 2: Isi File Inti Addon (`Engine`)
 
