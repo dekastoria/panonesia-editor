@@ -1,153 +1,207 @@
-Context Engineering: Panonesia CMS
-Dokumen ini mendefinisikan konteks teknis dan arsitektural untuk pembangunan aplikasi Panonesia CMS, sebuah CMS khusus untuk pop-up interaktif pada tur virtual 3DVista, dengan pembaruan visual dan arsitektur terbaru.
+Context Engineering: Panonesia CMS (v3)
 
-peran: "Senior Software Architect"
-
-tone: "ringkas, solutif"
-
-tingkat_teknis: sedang
+Peran: Senior Software Architect
+Tone: Ringkas, solutif
+Tingkat teknis: Menengah
 
 System Layer
-Sistem yang akan dibangun adalah sebuah Single-Page Application (SPA) yang berjalan di lingkungan desktop modern. Tujuannya adalah sebagai "studio desain" offline untuk mengelola seluruh aset dari pop-up virtual tour.
 
-Sistem ini menggunakan pendekatan hybrid untuk CSS:
+Tipe aplikasi: Single-Page Application (SPA) berbasis Next.js (App Router).
 
-Saat Live Editing: Pratinjau (iframe) memuat Tailwind via CDN untuk kecepatan dan pengalaman real-time yang instan.
+Target environment: VPS dengan aaPanel (MySQL, Node.js).
 
-Saat Final Export: Sebuah file core.css yang teroptimasi penuh akan dikompilasi di sisi server dan disertakan dalam paket ekspor untuk performa produksi maksimal.
+UI: Light mode, modern & minimalis, terinspirasi Shadcn UI/Vercel.
 
-Output akhirnya adalah sebuah paket proyek .zip yang mandiri, teroptimasi, dan siap untuk diunggah ke server hosting dan diintegrasikan dengan 3DVista. Antarmuka pengguna (UI) akan mengadopsi tema terang (light mode) yang bersih, modern, dan minimalis, terinspirasi dari estetika Shadcn UI/Vercel.
+Use case: "Studio desain" untuk mengelola aset popup tur virtual 3DVista, bekerja offline + online.
+
+CSS Strategy
+
+Live Editing: Iframe preview menggunakan Tailwind CDN (real-time, instan).
+
+Final Export: Server menjalankan Tailwind compiler (npx tailwindcss) untuk menghasilkan core.css yang optimal.
+
+Output
+
+Paket .zip mandiri berisi:
+
+'''''
+/inject/        // Semua file HTML popup
+/dist/core.css  // Hasil compile Tailwind, minified
+/assets/        // Semua media (image ≤5MB, video ≤50MB, ≤4 video, ≤50 image)
+registry.json   // Manifest project
+loader.js       // Dynamic loader script
+'''''
+
+Data Persistence Strategy
+Database
+
+Gunakan MySQL (aaPanel/XAMPP).
+
+Metadata project, panorama, popup, dan asset dikelola via tabel relasional.
+
+File besar disimpan di server file system (/uploads/projectID/...), hanya path yang dicatat di DB.
+
+Struktur Tabel Utama
+
+projects (id, name, description, created_at, updated_at)
+
+panoramas (id, project_id, name, order_index)
+
+popups (id, panorama_id, name, type, html_content)
+
+assets (id, project_id, name, type, path, size, uploaded_at)
+
+Asset Rules
+
+Image: max 5MB per file, max 50 file.
+
+Video: max 50MB per file, max 4 file.
+
+Video besar → direkomendasikan YouTube embed.
 
 Domain Layer
-Domain inti aplikasi berpusat pada entitas berikut dengan struktur data yang disarankan:
 
-Project: Representasi keseluruhan tur virtual.
+Entitas utama:
 
-id: string
+Project → berisi panoramas, aset.
 
-name: string
+Panorama → scene di 3DVista.
 
-panoramas: Array<Panorama>
+Popup → entitas dengan id, type, htmlContent, name.
 
-Panorama: Entitas yang merepresentasikan sebuah scene di 3DVista.
+Asset → file media di server, dicatat di DB.
 
-id: number (e.g., 1, 2, 3)
-
-name: string (e.g., "1. Ruang Tamu")
-
-popups: Array<Popup>
-
-Popup: Entitas anak dari Panorama.
-
-id: string (e.g., "pop-1-text-001")
-
-name: string
-
-type: 'text' | 'img' | 'gallery' | 'embed' | 'custom'
-
-htmlContent: string
-
-Asset: Representasi file di Asset Library.
-
-id: string
-
-name: string (e.g., "sofa.jpg")
-
-path: string (e.g., "assets/images/sofa.jpg")
-
-blobUrl: string (URL sementara untuk pratinjau)
-
-file: File (objek file asli untuk ekspor)
-
-Export Artifacts: Hasil akhir proyek dalam format .zip, berisi:
-
-inject/: Folder berisi semua file HTML pop-up.
-
-dist/core.css: Satu file CSS yang telah dioptimalkan.
-
-assets/: Folder berisi semua media yang digunakan.
-
-registry.json: File manifest JSON.
-
-loader.js: Skrip pemuat dinamis.
+Export Artifacts → hasil akhir .zip.
 
 Behavior Layer
-Alur kerja pengguna (User Flow) utama adalah sebagai berikut:
+User Flow
 
-Project & Asset Management: Pengguna mengelola proyek, panorama, dan aset media melalui antarmuka utama.
+Project & Asset Management: buat project, upload aset (disimpan ke server, path tercatat di MySQL).
 
-Editing Workflow: Pengguna memilih sebuah pop-up dan masuk ke Editor View. Saat mengklik "Extract Content", sistem harus:
+Editing Workflow:
 
-Membuat DOMParser untuk mem-parsing htmlContent dari pop-up yang aktif.
+Pilih popup → masuk ke editor.
 
-Deteksi Tema: Melakukan iterasi pada semua elemen dan classList untuk mencari kelas warna Tailwind yang cocok dengan tailwindColorMap. Prioritaskan kelas yang paling relevan (misalnya, bg- pada <button> untuk primary color) untuk mengisi state themeColors.
+Extract Content → parsing htmlContent → generate form.
 
-Buat Form: Melakukan iterasi kedua untuk membuat form fields. Beri data-editable-id unik pada setiap elemen yang diekstrak. Buat field untuk textContent, src (pada <img>), dan href (pada <a> yang tidak memiliki <a> anak).
+Deteksi Tema:
+
+Step 1: Parsing class Tailwind.
+
+Step 2: Fallback getComputedStyle() untuk kelas custom (misalnya bg-[#hex]).
 
 Final Export:
 
-Langkah A (Klien): Mengumpulkan htmlContent dari setiap pop-up di semua panorama.
+Klien: kumpulkan htmlContent.
 
-Langkah B (Klien -> Server): Mengirim array dari semua htmlContent ke API Route /api/generate-css.
+Server: /api/generate-css compile Tailwind → hasilkan core.css.
 
-Langkah C (Server): API Route menggabungkan semua HTML menjadi satu string, menuliskannya ke file sementara, lalu menjalankan Tailwind CSS Compiler (child_process) yang menargetkan file sementara tersebut.
+Bundling:
 
-Langkah D (Server -> Klien): API Route membaca hasil core.css dan mengirimkannya kembali sebagai respons.
+Default: JSZip + FileSaver.js (untuk proyek ≤200MB total).
 
-Langkah E (Klien): Aplikasi klien menggunakan JSZip untuk membuat struktur folder, menambahkan semua Export Artifacts, dan memicu unduhan menggunakan FileSaver.js.
+Fallback: server-side zip (untuk proyek besar, streaming langsung ke klien).
 
 Working Memory
-Sistem harus mampu mengelola state aplikasi secara keseluruhan, termasuk struktur proyek, daftar aset, dan state dari pop-up yang sedang aktif diedit. Gunakan useState untuk state komponen lokal dan useContext + useReducer untuk state global yang kompleks (struktur proyek dan aset).
+
+Gunakan React state:
+
+useState → lokal.
+
+useContext + useReducer → global (project tree, asset list).
+
+Saat load project: data query dari MySQL + file asset dari server folder.
 
 Assumptions
-Aplikasi dijalankan di lingkungan Node.js (via Next.js).
 
-Browser pengguna modern.
+Aplikasi jalan di Node.js (aaPanel VPS).
 
-Tujuan integrasi adalah 3DVista yang mampu menjalankan JavaScript.
+User: single-user awal, tapi arsitektur siap untuk multi-user.
 
-Pengguna memiliki pemahaman dasar HTML dan kelas Tailwind.
+Proyek selalu bisa disimpan dan dipanggil kembali.
 
-Gaps
-loader.js Specification: Perlu didefinisikan fungsinya. Minimal harus memiliki fungsi global seperti window.panonesiaLoader.show(popupId) yang dapat menerima id pop-up, mencari URL-nya di registry.json, membuat iframe di dalam modal container, dan menampilkannya dengan transisi fade-in.
+Gaps & Tantangan
 
-Asset Management: Fungsionalitas untuk menghapus atau mengganti nama aset di state assets perlu ditambahkan.
+loader.js
 
-Project Persistence: Mekanisme penyimpanan data proyek perlu dipilih. Rekomendasi awal: Gunakan localStorage untuk menyimpan seluruh state proyek dalam format JSON, dengan tombol "Save Project" dan "Load Project".
+Harus punya API formal: show(popupId), hide(), on(event, callback)
+
+Gunakan sandboxed iframe (sandbox="allow-same-origin allow-forms") + animasi transisi.
+
+Asset Management
+
+Rename/delete aset harus update referensi otomatis di semua popup terkait.
+
+Editor UX
+
+Popup dengan elemen banyak → butuh pengelompokan atau filter form.
+
+Export Size
+
+Browser bisa crash kalau file >200MB → gunakan server-side zip fallback.
 
 Initial Tasks
-Setup Proyek: Inisialisasi proyek Next.js dengan Tailwind CSS.
 
-Bangun Layout Inti: Buat hirarki komponen React: <App>, <Header>, <DashboardView>, <EditorView>, <TemplatesView>. Terapkan tema visual "Shadcn".
+Setup proyek Next.js + Tailwind.
 
-Implementasi Editor View: Di dalam <EditorView>, buat komponen <PanoramaSidebar>, <MainEditor (berisi <PreviewIframe> dan <CodeEditor>), dan <LiveEditorSidebar>.
+Buat layout inti: <App>, <Header>, <DashboardView>, <EditorView>.
 
-Buat API Route untuk Kompilasi CSS: Implementasikan endpoint /api/generate-css.
+Implementasi DB schema MySQL (tabel project, panorama, popup, asset).
 
-Implementasikan Fungsi Ekspor: Buat fungsi handleExport yang mengintegrasikan JSZip, FileSaver.js, dan memanggil API Route.
+Implementasi API Routes:
 
-Standar
-arsitektur: Next.js dengan App Router. Logika sisi server ditangani oleh API Routes.
+/api/projects (CRUD project).
 
-ui_kit: Tailwind CSS, dengan bahasa desain terinspirasi dari Shadcn UI/Vercel.
+/api/assets (upload & metadata).
 
-bahasa_pemrograman: JavaScript (React/Next.js), dengan Node.js untuk sisi server.
+/api/generate-css (compile Tailwind).
 
-data_fetching: State management client-side (useState, useContext). Fetch API untuk API Route.
+Integrasi DOMPurify untuk keamanan.
 
-validasi: Validasi input dasar di sisi klien (misalnya, memastikan nama panorama tidak kosong).
+Implementasi export flow: JSZip (default) + server-side fallback.
 
-testing: Direkomendasikan Jest/Vitest (unit), Cypress/Playwright (E2E).
+Standards
 
-a11y: Menggunakan HTML semantik dan atribut ARIA.
+Arsitektur: Next.js App Router, modular.
 
-seo: Tidak relevan.
+UI Kit: Tailwind CSS (Shadcn style).
 
-git: GitHub Flow.
+Bahasa: JavaScript (React/Next.js, Node.js).
 
-rilis: npm run build dan npm start.
+Validasi: nama project, panorama, popup tidak boleh kosong.
+
+Testing: Jest (unit), Playwright (E2E).
+
+Git Flow: GitHub Flow.
+
+Rilis: npm run build, npm start di aaPanel.
+
+Keamanan:
+
+DOMPurify → sanitasi htmlContent.
+
+loader.js sandboxed iframe.
+
+Validasi file upload (tipe & ukuran sesuai aturan).
 
 Target
-kinerja: Pengalaman editing real-time. Proses ekspor cepat. core.css yang dihasilkan harus sangat optimal.
 
-keamanan: Sanitasi input HTML untuk
+Kinerja: editing real-time, export cepat (<30 detik untuk 200MB).
+
+Keamanan: bebas XSS, sandbox popup.
+
+Skalabilitas: single user → siap multi-user dengan MySQL.
+
+Batas asset jelas: image ≤5MB (≤50), video ≤50MB (≤4).
+
+✨ Dengan desain v3 ini:
+
+Sederhana & cukup untuk 1 user,
+
+Siap berkembang ke multi-user karena sudah pakai MySQL,
+
+Efisien karena file besar tetap di server, bukan DB,
+
+Aman karena ada sanitasi & sandboxing,
+
+Ringan karena aset dibatasi wajar.
