@@ -24,13 +24,13 @@ Output
 
 Paket .zip mandiri berisi:
 
-'''''
+```
 /inject/        // Semua file HTML popup
 /dist/core.css  // Hasil compile Tailwind, minified
 /assets/        // Semua media (image ≤5MB, video ≤50MB, ≤4 video, ≤50 image)
 registry.json   // Manifest project
 loader.js       // Dynamic loader script
-'''''
+```
 
 Data Persistence Strategy
 Database
